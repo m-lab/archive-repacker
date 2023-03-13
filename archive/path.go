@@ -56,7 +56,7 @@ func (p *Path) Object() string {
 	return strings.TrimPrefix(p.Path, "/")
 }
 
-// Filename returns a suitable local filename based on the Path.
+// Filename returns a filename based on the Path.
 func (p *Path) Filename() string {
 	return path.Join(p.Host, p.Path)
 }
