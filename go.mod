@@ -4,6 +4,9 @@ go 1.20
 
 require (
 	cloud.google.com/go/storage v1.29.0
+	github.com/fsouza/fake-gcs-server v1.44.0
+	github.com/google/go-cmp v0.5.9
+	github.com/googleapis/google-cloud-go-testing v0.0.0-20191008195207-8e1d251e947d
 	github.com/m-lab/go v0.1.59
 )
 
