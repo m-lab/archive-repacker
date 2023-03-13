@@ -4,12 +4,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
-
 	"cloud.google.com/go/bigquery"
+	"github.com/goccy/bigquery-emulator/server"
+	"github.com/google/go-cmp/cmp"
 	"google.golang.org/api/option"
 
-	"github.com/goccy/bigquery-emulator/server"
 	"github.com/m-lab/go/testingx"
 )
 
