@@ -9,7 +9,6 @@ import (
 
 	"github.com/fsouza/fake-gcs-server/fakestorage"
 	"github.com/google/go-cmp/cmp"
-	"github.com/googleapis/google-cloud-go-testing/storage/stiface"
 	"github.com/m-lab/go/testingx"
 )
 
@@ -116,7 +115,7 @@ func TestNewSource(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			src, err := NewSource(context.TODO(), stiface.AdaptClient(client), tt.url)
+			src, err := NewSource(context.TODO(), client, tt.url)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewSource() error = %v, wantErr %v", err, tt.wantErr)
 				return
