@@ -84,13 +84,13 @@ func NewSource(ctx context.Context, client *storage.Client, url string) (*Source
 	}
 
 	// Create reader.
-	err = Retry(1, func() error {
+	err = retry(1, func() error {
 		rdr, err = path.Reader(ctx, client)
 		if err != nil {
 			return err
 		}
 		total := int64(0)
-		for total < rdr.Size() {
+		for total < rdr.Attrs.Size {
 			n, err := io.Copy(buf, rdr)
 			if err != nil {
 				return err
@@ -200,6 +200,18 @@ func (t *Closer) Close() error {
 	var err error
 	if t.zipper != nil {
 		err = t.zipper.Close()
+	}
+	return err
+}
+
+func retry(maxTries int, f func() error) error {
+	tries := 0
+	waitTime := time.Second
+	var err error
+	for err = f(); err != nil && tries < maxTries; err = f() {
+		time.Sleep(waitTime)
+		waitTime *= 2
+		tries++
 	}
 	return err
 }
