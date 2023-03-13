@@ -30,9 +30,8 @@ type Source struct {
 	Path *Path
 	TarReader
 	io.Closer
-	Bytes         *bytes.Buffer
-	RetryBaseTime time.Duration // The base time for backoff and retry.
-	Count         int
+	Bytes *bytes.Buffer
+	Count int
 }
 
 func NewFileSource(file string) (*Source, error) {
@@ -59,18 +58,17 @@ func NewFileSource(file string) (*Source, error) {
 	closer := &Closer{gzr, nil}
 
 	s := &Source{
-		Path:          path,
-		TarReader:     tarReader,
-		Closer:        closer,
-		Bytes:         buf,
-		RetryBaseTime: 16 * time.Millisecond,
+		Path:      path,
+		TarReader: tarReader,
+		Closer:    closer,
+		Bytes:     buf,
 	}
 	return s, nil
 }
 
 // NewSource creates a Source for iterating through every archive file. Caller
-// is responsible for calling Close on the returned object.  path should be of
-// form gs://bucket/filename.tgz
+// is responsible for calling Close on the returned object. Path should be a GCS
+// URL, like gs://bucket/path/to/filename.tgz
 func NewSource(ctx context.Context, client *storage.Client, url string) (*Source, error) {
 	// NOTE: cancel is called by the closer.
 	ctx, cancel := context.WithCancel(ctx)
@@ -83,7 +81,7 @@ func NewSource(ctx context.Context, client *storage.Client, url string) (*Source
 		return nil, err
 	}
 
-	// Create reader.
+	// Create reader and load content into memory.
 	err = retry(1, func() error {
 		rdr, err = path.Reader(ctx, client)
 		if err != nil {
@@ -119,15 +117,15 @@ func NewSource(ctx context.Context, client *storage.Client, url string) (*Source
 	closer := &Closer{gzr, cancel}
 
 	gcs := &Source{
-		Path:          path,
-		TarReader:     tarReader,
-		Closer:        closer,
-		Bytes:         buf,
-		RetryBaseTime: 16 * time.Millisecond,
+		Path:      path,
+		TarReader: tarReader,
+		Closer:    closer,
+		Bytes:     buf,
 	}
 	return gcs, nil
 }
 
+// CopyHeader duplicates the given tar.Header, suitable for use in a new tar archive.
 func CopyHeader(h *tar.Header) *tar.Header {
 	n := &tar.Header{
 		Typeflag: h.Typeflag,
