@@ -19,8 +19,13 @@ func TestParseURL(t *testing.T) {
 			path: "gs://fake-bucket/fake/path/anyfile.foo",
 		},
 		{
-			name: "success-file",
+			name: "success-relative-file",
 			path: "file://fake/path/anyfile.foo",
+			file: "fake/path/anyfile.foo",
+		},
+		{
+			name: "success-absolute-file",
+			path: "file:///fake/path/anyfile.foo",
 			file: "/fake/path/anyfile.foo",
 		},
 		{
