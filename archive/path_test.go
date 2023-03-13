@@ -1,6 +1,7 @@
 package archive
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/m-lab/go/testingx"
@@ -10,11 +11,17 @@ func TestParseURL(t *testing.T) {
 	tests := []struct {
 		name    string
 		path    string
+		file    string
 		wantErr bool
 	}{
 		{
-			name: "success",
+			name: "success-gs",
 			path: "gs://fake-bucket/fake/path/anyfile.foo",
+		},
+		{
+			name: "success-file",
+			path: "file://fake/path/anyfile.foo",
+			file: "/fake/path/anyfile.foo",
 		},
 		{
 			name:    "error-parsing-url",
@@ -22,7 +29,7 @@ func TestParseURL(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:    "error-non-gcs-url",
+			name:    "error-unsupported-scheme-url",
 			path:    "http://localhost:1234",
 			wantErr: true,
 		},
@@ -38,7 +45,10 @@ func TestParseURL(t *testing.T) {
 				return
 			}
 			if tt.path != got.String() {
-				t.Errorf("ParseURL() = %v, want %v", got.String(), tt.path)
+				t.Errorf("Path.String() = %v, want %v", got.String(), tt.path)
+			}
+			if strings.HasPrefix(tt.path, "file:") && tt.file != got.Filename() {
+				t.Errorf("Path.Filename() = %v, want %v", got.Filename(), tt.path)
 			}
 		})
 	}
@@ -48,15 +58,24 @@ func TestParseArchiveURL(t *testing.T) {
 	tests := []struct {
 		name    string
 		path    string
+		bucket  string
+		object  string
 		wantErr bool
 	}{
 		{
-			name: "success",
-			path: "gs://fake-bucket/fake/path/anyfile.tgz",
+			name:   "success",
+			path:   "gs://fake-bucket/fake/path/anyfile.tgz",
+			bucket: "fake-bucket",
+			object: "fake/path/anyfile.tgz",
 		},
 		{
 			name:    "error-parsing-url",
 			path:    ":- this-is-not-a-url",
+			wantErr: true,
+		},
+		{
+			name:    "error-wrong-suffix",
+			path:    "gs://fake-bucket/fake/path/anyfile.foo",
 			wantErr: true,
 		},
 	}
@@ -64,14 +83,20 @@ func TestParseArchiveURL(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := ParseArchiveURL(tt.path)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("ParseURL() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("ParseArchiveURL() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if tt.wantErr {
 				return
 			}
 			if tt.path != got.String() {
-				t.Errorf("ParseURL() = %v, want %v", got.String(), tt.path)
+				t.Errorf("Path.String() = %v, want %v", got.String(), tt.path)
+			}
+			if tt.bucket != got.Bucket() {
+				t.Errorf("Path.Bucket() = %v, want %v", got.Bucket(), tt.bucket)
+			}
+			if tt.object != got.Object() {
+				t.Errorf("Path.Object() = %v, want %v", got.Object(), tt.object)
 			}
 		})
 	}
