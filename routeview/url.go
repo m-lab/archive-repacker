@@ -41,9 +41,12 @@ func NewURLGenerator(client *storage.Client, prefix string) *URLGenerator {
 
 // Next returns a routeview prefix2as URL for the named date. If no file is found, the process exits.
 func (u *URLGenerator) Next(ctx context.Context, date string) (*url.URL, error) {
-	// https://storage.cloud.google.com/downloader-mlab-sandbox/RouteViewIPv4/2023/02/routeviews-rv2-20230205-2200.pfx2as.gz
+	// An example of GCS URLs we are searching:
+	// * gs://downloader-mlab-sandbox/RouteViewIPv4/2023/02/routeviews-rv2-20230205-2200.pfx2as.gz
 	d, err := civil.ParseDate(date)
-	rtx.Must(err, "failed to parse given date")
+	if err != nil {
+		return nil, err
+	}
 	ym := fmt.Sprintf("%04d/%02d", d.Year, d.Month)
 	file := fmt.Sprintf("routeviews-%s-%04d%02d%02d", u.version, d.Year, d.Month, d.Day)
 	datePrefix := path.Join(u.path.Object(), ym)
