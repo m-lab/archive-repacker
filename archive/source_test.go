@@ -2,7 +2,6 @@ package archive
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"testing"
 	"time"
@@ -14,13 +13,15 @@ import (
 
 func TestNewFileSource(t *testing.T) {
 	tests := []struct {
-		name    string
-		file    string
-		wantErr bool
+		name      string
+		file      string
+		wantCount int
+		wantErr   bool
 	}{
 		{
-			name: "success",
-			file: "file://./testdata/input.tgz",
+			name:      "success",
+			file:      "file://./testdata/input.tgz",
+			wantCount: 1,
 		},
 		{
 			name:    "error-file-path",
@@ -54,7 +55,9 @@ func TestNewFileSource(t *testing.T) {
 					break
 				}
 			}
-			fmt.Println(got.Count)
+			if got.Count != tt.wantCount {
+				t.Errorf("Source.Count = %v, want %v", got.Count, tt.wantCount)
+			}
 		})
 	}
 }
