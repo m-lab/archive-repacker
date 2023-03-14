@@ -25,7 +25,7 @@ type TarReader interface {
 	Read(b []byte) (int, error)
 }
 
-// Source reads from a GCS tar file containing test files.
+// Source reads from a tar archive from Path containing test files.
 type Source struct {
 	Path *Path
 	TarReader
@@ -69,7 +69,7 @@ func NewFileSource(file string) (*Source, error) {
 }
 
 // NewSource creates a new Source from the given URL.
-// Path should be a GCS URL, like gs://bucket/path/to/filename.tgz
+// The url parameter should be a GCS URL, like gs://bucket/path/to/filename.tgz
 func NewSource(ctx context.Context, client *storage.Client, url string) (*Source, error) {
 	// NOTE: cancel is called by the closer.
 	ctx, cancel := context.WithCancel(ctx)
