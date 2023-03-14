@@ -1,17 +1,16 @@
 package routeview
 
 import (
+	"context"
 	"net/url"
 	"testing"
 	"time"
 
 	"github.com/fsouza/fake-gcs-server/fakestorage"
-	"github.com/m-lab/go/testingx"
 
 	"github.com/m-lab/go/rtx"
+	"github.com/m-lab/go/testingx"
 )
-
-// gs://fake-test-bucket/RouteViewIPv4/2022/12/routeviews-rv2-20221202-1200.pfx2as.gz
 
 func TestURL_Next(t *testing.T) {
 
@@ -67,10 +66,14 @@ func TestURL_Next(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := NewURL(client, tt.url)
+			p := NewURLGenerator(client, tt.url)
 			u, err := url.Parse(tt.want)
 			rtx.Must(err, "failed to parse url:", tt.want)
-			if got := p.Next(tt.date); *got != *u {
+			got, err := p.Next(context.Background(), tt.date)
+			if err != nil {
+				t.Errorf("URL.Next() = %v, want nil", err)
+			}
+			if *got != *u {
 				t.Errorf("URL.Next() = %v, want %v", got, tt.want)
 			}
 		})

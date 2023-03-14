@@ -16,31 +16,31 @@ import (
 	"github.com/m-lab/go/storagex"
 )
 
-type URL struct {
+// URLGenerator uses a GCS archive to identify per-date routeview prefix2as
+// archive URLs.
+type URLGenerator struct {
 	client  *storage.Client
 	version string
 	path    *archive.Path
 }
 
-func NewURL(client *storage.Client, prefix string) *URL {
+// NewURLGenerator creates a new URLGenerator for files under the given GCS prefix URL.
+func NewURLGenerator(client *storage.Client, prefix string) *URLGenerator {
 	p, err := archive.ParseURL(prefix)
 	rtx.Must(err, "failed to parse prefix")
 	version := "rv2"
 	if strings.Contains(p.Path, "IPv6") {
 		version = "rv6"
 	}
-	return &URL{
+	return &URLGenerator{
 		client:  client,
 		version: version,
 		path:    p,
 	}
 }
 
-func (u *URL) Next(date string) *url.URL {
-	//ctx := context.Background()
-	//client, err := gcs.NewClient(ctx)
-	//rtx.Must(err, "Failed to allocate storage.Client")
-
+// Next returns a routeview prefix2as URL for the named date. If no file is found, the process exits.
+func (u *URLGenerator) Next(ctx context.Context, date string) (*url.URL, error) {
 	// https://storage.cloud.google.com/downloader-mlab-sandbox/RouteViewIPv4/2023/02/routeviews-rv2-20230205-2200.pfx2as.gz
 	d, err := civil.ParseDate(date)
 	rtx.Must(err, "failed to parse given date")
@@ -50,15 +50,12 @@ func (u *URL) Next(date string) *url.URL {
 
 	result := ""
 	bucket := storagex.NewBucket(u.client.Bucket(u.path.Bucket()))
-	bucket.Walk(context.TODO(), datePrefix+"/", func(o *storagex.Object) error {
+	bucket.Walk(ctx, datePrefix+"/", func(o *storagex.Object) error {
 		if strings.HasPrefix(o.LocalName(), file) {
 			result = "gs://" + u.path.Bucket() + "/" + o.ObjectName()
 			return io.EOF
 		}
 		return nil
 	})
-
-	ur, err := url.Parse(result)
-	rtx.Must(err, "failed to parse url:", result)
-	return ur
+	return url.Parse(result)
 }
