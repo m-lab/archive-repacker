@@ -34,6 +34,8 @@ type Source struct {
 	Count int
 }
 
+// NewFileSource creates a new Source read from the named file.
+// The file parameter should be a URL, like file:///path/to/filename.tgz
 func NewFileSource(file string) (*Source, error) {
 	path, err := ParseArchiveURL(file)
 	if err != nil {
@@ -66,9 +68,8 @@ func NewFileSource(file string) (*Source, error) {
 	return s, nil
 }
 
-// NewSource creates a Source for iterating through every archive file. Caller
-// is responsible for calling Close on the returned object. Path should be a GCS
-// URL, like gs://bucket/path/to/filename.tgz
+// NewSource creates a new Source from the given URL.
+// Path should be a GCS URL, like gs://bucket/path/to/filename.tgz
 func NewSource(ctx context.Context, client *storage.Client, url string) (*Source, error) {
 	// NOTE: cancel is called by the closer.
 	ctx, cancel := context.WithCancel(ctx)
