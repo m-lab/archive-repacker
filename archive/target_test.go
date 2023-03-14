@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/fsouza/fake-gcs-server/fakestorage"
-	"github.com/googleapis/google-cloud-go-testing/storage/stiface"
 	"github.com/m-lab/go/testingx"
 )
 
@@ -13,11 +12,19 @@ func TestNewTarget(t *testing.T) {
 	tests := []struct {
 		name    string
 		file    string
+		output  string
 		wantErr bool
 	}{
 		{
-			name: "success",
-			file: "file://./testdata/input.tgz",
+			name:   "success",
+			file:   "file://./testdata/input.tgz",
+			output: "gs://fake-output-bucket/fake/path/input.tgz",
+		},
+		{
+			name:    "error-writing-to-bucket",
+			file:    "file://./testdata/input.tgz",
+			output:  "gs://error-bucket/fake/path/input.tgz",
+			wantErr: true,
 		},
 	}
 	server, err := fakestorage.NewServerWithOptions(fakestorage.Options{
@@ -48,18 +55,19 @@ func TestNewTarget(t *testing.T) {
 				}
 				out.AddFile(CopyHeader(h), b)
 			}
-
 			src.Close()
 			out.Close()
+			p, err := ParseArchiveURL(tt.output)
+			testingx.Must(t, err, "failed to parse output gcs path")
+
+			// Verify & Upload
 			if out.Count != src.Count {
 				t.Errorf("Target.Count = %d, want %d", out.Count, src.Count)
 			}
-
-			p, err := ParseArchiveURL("gs://fake-output-bucket/fake/path/input.tgz")
-			testingx.Must(t, err, "failed to parse output gcs path")
-
-			err = out.Upload(context.TODO(), stiface.AdaptClient(client), p)
-			testingx.Must(t, err, "failed to upload file")
+			err = out.Upload(context.Background(), client, p)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Target.Upload() = %v, want nil", err)
+			}
 		})
 	}
 }

@@ -23,7 +23,8 @@ var (
 	)
 )
 
-// A Target archive tarfile represents a single tar file containing data for upload to GCS.
+// A Target represents a single, compressed, tar archive containing files to be
+// uploaded to GCS.
 type Target struct {
 	Bytes      *bytes.Buffer
 	tarWriter  *tar.Writer
@@ -31,7 +32,7 @@ type Target struct {
 	Count      int
 }
 
-// NewTarget creates a new tar archive to hold the contents of a tar file.
+// NewTarget creates a new Target for adding files to a compressed tar archive.
 func NewTarget() *Target {
 	buffer := &bytes.Buffer{}
 	gzipWriter := gzip.NewWriter(buffer)
@@ -43,27 +44,26 @@ func NewTarget() *Target {
 	}
 }
 
-// Add adds a single file to the tarfile, and starts a timer if the file is the
-// first file added.
+// Add appends a single file to the Target archive with the given header and file contents.
 func (ar *Target) AddFile(h *tar.Header, contents []byte) {
-	if h == nil {
-		return
+	if h != nil {
+		rtx.Must(ar.tarWriter.WriteHeader(h), "Could not write the tarfile header for %v", h.Name)
+		_, err := ar.tarWriter.Write(contents)
+		rtx.Must(err, "Could not write the tarfile contents for %v", h.Name)
+		// Flush the data so that our in-memory filesize is accurate.
+		rtx.Must(ar.tarWriter.Flush(), "Could not flush the tarWriter")
+		rtx.Must(ar.gzipWriter.Flush(), "Could not flush the gzipWriter")
+		ar.Count++
 	}
-	rtx.Must(ar.tarWriter.WriteHeader(h), "Could not write the tarfile header for %v", h.Name)
-	_, err := ar.tarWriter.Write(contents)
-	rtx.Must(err, "Could not write the tarfile contents for %v", h.Name)
-	// Flush the data so that our in-memory filesize is accurate.
-	rtx.Must(ar.tarWriter.Flush(), "Could not flush the tarWriter")
-	rtx.Must(ar.gzipWriter.Flush(), "Could not flush the gzipWriter")
-	ar.Count++
 }
 
+// Close closes the Target archive.
 func (ar *Target) Close() error {
 	ar.tarWriter.Close()
 	return ar.gzipWriter.Close()
 }
 
-// Uploads the completed target. Archive should be closed before calling Upload.
+// Uploads the completed Target archive contents to GCS.
 func (ar *Target) Upload(ctx context.Context, client *storage.Client, p *Path) error {
 	sctx, cancel := context.WithTimeout(ctx, 20*time.Minute)
 	defer cancel()
