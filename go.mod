@@ -3,24 +3,21 @@ module github.com/m-lab/archive-repacker
 go 1.20
 
 require (
+	cloud.google.com/go v0.107.0
 	cloud.google.com/go/storage v1.29.0
 	github.com/fsouza/fake-gcs-server v1.44.0
 	github.com/google/go-cmp v0.5.9
-	github.com/googleapis/google-cloud-go-testing v0.0.0-20191008195207-8e1d251e947d
 	github.com/m-lab/go v0.1.59
 )
 
 require (
-	cloud.google.com/go v0.107.0 // indirect
 	cloud.google.com/go/compute v1.14.0 // indirect
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
 	cloud.google.com/go/iam v0.8.0 // indirect
 	cloud.google.com/go/pubsub v1.28.0 // indirect
 	github.com/felixge/httpsnoop v1.0.2 // indirect
-	github.com/fsouza/fake-gcs-server v1.44.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
-	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/google/renameio/v2 v2.0.0 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.2.1 // indirect
