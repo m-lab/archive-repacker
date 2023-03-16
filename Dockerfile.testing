@@ -7,5 +7,6 @@ RUN go install github.com/goccy/bigquery-emulator/cmd/bigquery-emulator@latest
 
 COPY . /go/src/github.com/m-lab/archive-repacker
 WORKDIR /go/src/github.com/m-lab/archive-repacker
-#RUN go test -v ./query
+RUN go get -tu ./...
+
 CMD go test -v ./...
