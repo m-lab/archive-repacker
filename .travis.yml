@@ -2,6 +2,9 @@ language: go
 go:
 - 1.20
 
+services:
+- docker
+
 before_install:
 - go install -v github.com/mattn/goveralls@latest
 # Install dependencies, including test dependencies.
@@ -13,8 +16,11 @@ script:
 - go get -u ./...
 - go vet ./...
 - CGO_ENABLED=0 go build ./...
-- go test ./... -race
-- go test ./... -v -coverprofile=_coverage.cov
+#- go test ./... -race
+#- go test ./... -v -coverprofile=_coverage.cov
+- docker build -f Dockerfile.testing -t local-bigquery-testing .
+- docker run -it local-bigquery-testing
+
 
 after_success:
 # Coveralls
