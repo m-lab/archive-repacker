@@ -18,7 +18,7 @@ script:
 #- CGO_ENABLED=0 go build ./...
 #- go test ./... -race
 #- go test ./... -v -coverprofile=_coverage.cov
-- travis_wait 60 docker build -f Dockerfile.testing -t local-bigquery-testing .
+- travis_wait 60 sh -c 'docker build -f Dockerfile.testing -t local-bigquery-testing .'
 - docker run -it local-bigquery-testing
 
 
