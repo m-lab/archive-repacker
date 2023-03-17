@@ -11,7 +11,7 @@ import (
 	"github.com/m-lab/go/testingx"
 )
 
-func TestNewFileSource(t *testing.T) {
+func TestNewFileReader(t *testing.T) {
 	tests := []struct {
 		name      string
 		file      string
@@ -41,9 +41,9 @@ func TestNewFileSource(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewFileSource(tt.file)
+			got, err := NewFileReader(tt.file)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("NewFileSource() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("NewFileReader() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if tt.wantErr {
@@ -56,13 +56,13 @@ func TestNewFileSource(t *testing.T) {
 				}
 			}
 			if got.Count != tt.wantCount {
-				t.Errorf("Source.Count = %v, want %v", got.Count, tt.wantCount)
+				t.Errorf("Reader.Count = %v, want %v", got.Count, tt.wantCount)
 			}
 		})
 	}
 }
 
-func TestNewSource(t *testing.T) {
+func TestNewGCSReader(t *testing.T) {
 	tests := []struct {
 		name      string
 		url       string
@@ -118,9 +118,9 @@ func TestNewSource(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			src, err := NewSource(context.Background(), client, tt.url)
+			src, err := NewGCSReader(context.Background(), client, tt.url)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("NewSource() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("NewGCSReader() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if tt.wantErr {

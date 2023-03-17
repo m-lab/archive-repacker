@@ -18,24 +18,25 @@ var (
 	ErrNotRegularFile = errors.New("file type is not regular")
 )
 
-// TarReader provides Next and Read functions.
-type TarReader interface {
+// tarReader provides Next and Read functions.
+type tarReader interface {
 	Next() (*tar.Header, error)
 	Read(b []byte) (int, error)
 }
 
-// Source reads from a tar archive from Path containing test files.
-type Source struct {
+// Reader reads from a tar archive from Path containing test files.
+type Reader struct {
+	// Path is the original archive URL.
 	Path *Path
-	TarReader
-	io.Closer
-	Bytes *bytes.Buffer
+	// Count is the number of files read from the archive.
 	Count int
+	io.Closer
+	tarReader
 }
 
-// NewFileSource creates a new Source read from the named file.
+// NewFileReader creates a new Reader for the named file.
 // The file parameter should be a URL, like file:///path/to/filename.tgz
-func NewFileSource(file string) (*Source, error) {
+func NewFileReader(file string) (*Reader, error) {
 	path, err := ParseArchiveURL(file)
 	if err != nil {
 		return nil, err
@@ -58,18 +59,17 @@ func NewFileSource(file string) (*Source, error) {
 	// Create a closer to manage complete cleanup of all resources.
 	closer := &Closer{gzr, nil}
 
-	s := &Source{
+	s := &Reader{
 		Path:      path,
-		TarReader: tarReader,
+		tarReader: tarReader,
 		Closer:    closer,
-		Bytes:     buf,
 	}
 	return s, nil
 }
 
-// NewSource creates a new Source from the given URL.
+// NewGCSReader creates a new Reader from the given URL.
 // The url parameter should be a GCS URL, like gs://bucket/path/to/filename.tgz
-func NewSource(ctx context.Context, client *storage.Client, url string) (*Source, error) {
+func NewGCSReader(ctx context.Context, client *storage.Client, url string) (*Reader, error) {
 	// NOTE: cancel is called by the closer.
 	ctx, cancel := context.WithCancel(ctx)
 	var rdr *storage.Reader
@@ -116,11 +116,10 @@ func NewSource(ctx context.Context, client *storage.Client, url string) (*Source
 	// Create a closer to manage complete cleanup of all resources.
 	closer := &Closer{gzr, cancel}
 
-	gcs := &Source{
+	gcs := &Reader{
 		Path:      path,
-		TarReader: tarReader,
+		tarReader: tarReader,
 		Closer:    closer,
-		Bytes:     buf,
 	}
 	return gcs, nil
 }
@@ -156,7 +155,7 @@ func CopyHeader(h *tar.Header) *tar.Header {
 
 // NextFile reads the next file from the source, returning the original tar header
 // and file bytes. When the archive is completely read, NextFile returns io.EOF.
-func (s *Source) NextFile() (*tar.Header, []byte, error) {
+func (s *Reader) NextFile() (*tar.Header, []byte, error) {
 	// TODO: add metrics.
 
 	// Try to get the next file.  We retry multiple times, because sometimes
@@ -166,7 +165,7 @@ func (s *Source) NextFile() (*tar.Header, []byte, error) {
 	var h *tar.Header
 
 	// The tar data should be in memory, so there is no need to retry errors.
-	h, err = s.TarReader.Next()
+	h, err = s.tarReader.Next()
 	if err == io.EOF || err == io.ErrUnexpectedEOF || err != nil {
 		return nil, nil, err
 	}
@@ -177,7 +176,7 @@ func (s *Source) NextFile() (*tar.Header, []byte, error) {
 		return nil, nil, ErrNotRegularFile
 	}
 
-	data, err = io.ReadAll(s.TarReader)
+	data, err = io.ReadAll(s.tarReader)
 	if err == nil {
 		s.Count++
 	}
