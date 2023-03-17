@@ -56,13 +56,10 @@ func NewFileReader(file string) (*Reader, error) {
 	// Untar the uncompressed archive.
 	tarReader := tar.NewReader(gzr)
 
-	// Create a closer to manage complete cleanup of all resources.
-	closer := &Closer{gzr, nil}
-
 	s := &Reader{
 		Path:      path,
 		tarReader: tarReader,
-		Closer:    closer,
+		Closer:    gzr,
 	}
 	return s, nil
 }
@@ -70,14 +67,13 @@ func NewFileReader(file string) (*Reader, error) {
 // NewGCSReader creates a new Reader from the given URL.
 // The url parameter should be a GCS URL, like gs://bucket/path/to/filename.tgz
 func NewGCSReader(ctx context.Context, client *storage.Client, url string) (*Reader, error) {
-	// NOTE: cancel is called by the closer.
 	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	var rdr *storage.Reader
 	buf := &bytes.Buffer{}
 
 	path, err := ParseArchiveURL(url)
 	if err != nil {
-		cancel()
 		return nil, err
 	}
 
@@ -98,7 +94,6 @@ func NewGCSReader(ctx context.Context, client *storage.Client, url string) (*Rea
 		return nil
 	})
 	if err != nil {
-		cancel()
 		return nil, err
 	}
 	rdr.Close()
@@ -106,19 +101,16 @@ func NewGCSReader(ctx context.Context, client *storage.Client, url string) (*Rea
 	// Uncompress the archive.
 	gzr, err := gzip.NewReader(buf)
 	if err != nil {
-		cancel()
 		return nil, err
 	}
 	// Untar the uncompressed archive.
 	tarReader := tar.NewReader(gzr)
 
 	// Create a closer to manage complete cleanup of all resources.
-	closer := &Closer{gzr, cancel}
-
 	gcs := &Reader{
 		Path:      path,
 		tarReader: tarReader,
-		Closer:    closer,
+		Closer:    gzr,
 	}
 	return gcs, nil
 }
@@ -155,17 +147,13 @@ func CopyHeader(h *tar.Header) *tar.Header {
 // NextFile reads the next file from the source, returning the original tar header
 // and file bytes. When the archive is completely read, NextFile returns io.EOF.
 func (s *Reader) NextFile() (*tar.Header, []byte, error) {
-	// TODO: add metrics.
-
-	// Try to get the next file.  We retry multiple times, because sometimes
-	// GCS stalls and produces stream errors.
 	var err error
 	var data []byte
 	var h *tar.Header
 
 	// The tar data should be in memory, so there is no need to retry errors.
 	h, err = s.tarReader.Next()
-	if err == io.EOF || err == io.ErrUnexpectedEOF || err != nil {
+	if err != nil {
 		return nil, nil, err
 	}
 
@@ -180,24 +168,6 @@ func (s *Reader) NextFile() (*tar.Header, []byte, error) {
 		s.Count++
 	}
 	return h, data, err
-}
-
-// Closer handles gzip files.
-type Closer struct {
-	zipper io.Closer // Must be non-null
-	cancel func()    // Context cancel.
-}
-
-// Close invokes the gzip and body Close() functions.
-func (t *Closer) Close() error {
-	if t.cancel != nil {
-		defer t.cancel()
-	}
-	var err error
-	if t.zipper != nil {
-		err = t.zipper.Close()
-	}
-	return err
 }
 
 func retry(maxTries int, f func() error) error {
