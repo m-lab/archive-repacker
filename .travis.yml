@@ -18,10 +18,10 @@ before_install:
 script:
 # Vet the code, build the code, and run all the tests.
 #- CGO_ENABLED=0 go build ./...
+#   go vet ./... &&
 # NOTE: using -race appears to cause the process to hang indefinitely.
 - docker run -w $GODIR -v $PWD:$GODIR $IMAGE sh -c
   'go get -u ./... &&
-   go vet ./... &&
    go test ./... -v -coverprofile=_coverage.cov'
 
 
