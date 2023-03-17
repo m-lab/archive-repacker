@@ -64,7 +64,7 @@ func NewFileReader(file string) (*Reader, error) {
 	return s, nil
 }
 
-// NewGCSReader creates a new Reader from the given URL.
+// NewGCSReader creates a new Reader from the given GCS object.
 // The url parameter should be a GCS URL, like gs://bucket/path/to/filename.tgz
 func NewGCSReader(ctx context.Context, client *storage.Client, url string) (*Reader, error) {
 	ctx, cancel := context.WithCancel(ctx)
