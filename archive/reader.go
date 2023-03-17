@@ -67,22 +67,22 @@ func NewFileReader(file string) (*Reader, error) {
 // NewGCSReader creates a new Reader from the given GCS object.
 // The url parameter should be a GCS URL, like gs://bucket/path/to/filename.tgz
 func NewGCSReader(ctx context.Context, client *storage.Client, url string) (*Reader, error) {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	var rdr *storage.Reader
-	buf := &bytes.Buffer{}
-
 	path, err := ParseArchiveURL(url)
 	if err != nil {
 		return nil, err
 	}
 
+	var buf *bytes.Buffer
 	// Create reader and load content into memory.
 	err = retry(1, func() error {
-		rdr, err = path.Reader(ctx, client)
+		buf = &bytes.Buffer{}
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+		rdr, err := path.Reader(ctx, client)
 		if err != nil {
 			return err
 		}
+		defer rdr.Close()
 		total := int64(0)
 		for total < rdr.Attrs.Size {
 			n, err := io.Copy(buf, rdr)
@@ -96,7 +96,6 @@ func NewGCSReader(ctx context.Context, client *storage.Client, url string) (*Rea
 	if err != nil {
 		return nil, err
 	}
-	rdr.Close()
 
 	// Uncompress the archive.
 	gzr, err := gzip.NewReader(buf)
