@@ -276,8 +276,8 @@ func TestHandler_SaveAndLoad(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			output := path.Join(t.TempDir(), "out.json")
 			h := &Handler{
-				Output: output,
-				jobs:   tt.jobs,
+				JobsStateFile: output,
+				jobs:          tt.jobs,
 			}
 			err := h.Load(output) // before file exists.
 			testingx.Must(t, err, "failed to load file")

@@ -49,23 +49,30 @@ func (s *Sequence) LPop() string {
 }
 
 // Jobs represents a collection of pending, currently leased, and completed
-// Jobs. A Jobs instance can be Marshalled to JSON.
+// Jobs. A given date will only be in one of Pending, Leased, or Completed. A
+// Jobs instance can be Marshalled to JSON.
 type Jobs struct {
-	Pending   Sequence
-	Leased    map[string]Job
+	// Pending is the list of dates to be processed.
+	Pending Sequence
+	// Leased is the set of currently leased jobs.
+	Leased map[string]Job
+	// Completed is the set of all completed jobs.
 	Completed map[string]Job
 }
 
 // Handler is an HTTP handler for a jobs server.
 type Handler struct {
-	Output  string
+	// JobsStateFile is the file name where the handler will periodically write the job state.
+	JobsStateFile string
+	// Timeout is the maximum time a leased job should remain leased without
+	// updates before being returned to the pending queue.
 	Timeout time.Duration
 
 	lock sync.Mutex
 	jobs Jobs
 }
 
-// Save periodically seriaizes the collection of Jobs to Handler.Output, and
+// Save periodically seriaizes the collection of Jobs to Handler.JobsStateFile, and
 // periodically checks for leased jobs that have been processing longer than
 // Handler.Timeout and returns them to Pending.
 func (h *Handler) Save(ctx context.Context, t *time.Ticker) {
@@ -76,15 +83,15 @@ func (h *Handler) Save(ctx context.Context, t *time.Ticker) {
 			return
 		}
 		h.lock.Lock()
-		h.gc()
+		h.checkLeaseTimeout()
 		jobStatus.WithLabelValues("pending").Set(float64(len(h.jobs.Pending)))
 		jobStatus.WithLabelValues("leased").Set(float64(len(h.jobs.Leased)))
 		jobStatus.WithLabelValues("completed").Set(float64(len(h.jobs.Completed)))
 		b, err := json.MarshalIndent(&h.jobs, "", " ")
 		rtx.Must(err, "failed to marshal jobs")
-		err = ioutil.WriteFile(h.Output, b, 0o666)
+		err = ioutil.WriteFile(h.JobsStateFile, b, 0o666)
 		if err != nil {
-			log.Printf("failed to write %s: %v", h.Output, err)
+			log.Printf("failed to write %s: %v", h.JobsStateFile, err)
 		}
 		h.lock.Unlock()
 	}
@@ -108,13 +115,13 @@ func (h *Handler) Load(file string) error {
 		// This is also not fatal.
 		log.Println("Failed to unmarshal jobs, file may be corrupt:", err)
 	}
-	h.gc()
+	h.checkLeaseTimeout()
 	return nil
 }
 
-// gc checks for leased jobs that are older than the handler timeout and returns
+// checkLeaseTimeout checks for leased jobs that are older than the handler timeout and returns
 // them to pending, if so.
-func (h *Handler) gc() {
+func (h *Handler) checkLeaseTimeout() {
 	// Look for leased jobs that should be retried.
 	for date, j := range h.jobs.Leased {
 		if time.Since(j.Updated) > h.Timeout {
