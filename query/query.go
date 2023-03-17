@@ -40,27 +40,22 @@ type Querier interface {
 
 // Run collects all rows of the parameterized type from a job based on the given
 // query and any query parameters.
-func Run[Row any](ctx context.Context, c Querier, query string, params map[string]interface{}) ([]Row, error) {
+func Run[Row any](ctx context.Context, c Querier, query string, params []bigquery.QueryParameter) ([]Row, error) {
 	t := time.Now()
-
-	var queryParams []bigquery.QueryParameter
-	for key, value := range params {
-		queryParams = append(queryParams, bigquery.QueryParameter{Name: key, Value: value})
-	}
 
 	q := c.Query(query)
 	q.SetQueryConfig(bqiface.QueryConfig{
 		QueryConfig: bigquery.QueryConfig{
 			Q:          query,
 			Priority:   bigquery.BatchPriority,
-			Parameters: queryParams,
+			Parameters: params,
 		}})
 	it, err := q.Read(ctx)
 	if err != nil {
 		repackerQueryErrors.Inc()
 		return nil, err
 	}
-	results := make([]Row, 0, 1000)
+	results := []Row{}
 	logx.Debug.Printf("context %p: start query rows: %d, %s", ctx, it.TotalRows(), time.Since(t))
 	for {
 		var row Row

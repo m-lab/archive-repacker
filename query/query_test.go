@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"cloud.google.com/go/bigquery"
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/m-lab/go/cloud/bqfake"
@@ -57,9 +58,10 @@ func TestRun(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			client := bqfake.NewQueryReadClient[Row](tt.config)
 			ctx := context.Background()
-			p := map[string]interface{}{
-				"date": tt.date,
+			p := []bigquery.QueryParameter{
+				{Name: "date", Value: tt.date},
 			}
+
 			result, err := Run[Row](ctx, client, tt.query, p)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Run() error = %v, wantErr %v", err, tt.wantErr)
