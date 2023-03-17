@@ -107,7 +107,6 @@ func NewGCSReader(ctx context.Context, client *storage.Client, url string) (*Rea
 	gzr, err := gzip.NewReader(buf)
 	if err != nil {
 		cancel()
-		rdr.Close()
 		return nil, err
 	}
 	// Untar the uncompressed archive.
