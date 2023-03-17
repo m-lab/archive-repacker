@@ -28,21 +28,21 @@ var (
 	leaseDuration = promauto.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Name: "jobserver_lease_duration_seconds",
-			Help: "A histogram of request latencies to the job server handlers.",
+			Help: "A histogram of request latencies for the lease handler.",
 		},
 		[]string{"code"},
 	)
 	updateDuration = promauto.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Name: "jobserver_update_duration_seconds",
-			Help: "A histogram of request latencies to the job server handlers.",
+			Help: "A histogram of request latencies for the update handler.",
 		},
 		[]string{"code"},
 	)
 	completeDuration = promauto.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Name: "jobserver_complete_duration_seconds",
-			Help: "A histogram of request latencies to the job server handlers.",
+			Help: "A histogram of request latencies for the complete handler.",
 		},
 		[]string{"code"},
 	)
@@ -50,7 +50,7 @@ var (
 
 func init() {
 	flag.StringVar(&addr, "addr", "", "listen on the given address")
-	flag.StringVar(&output, "output", "", "")
+	flag.StringVar(&output, "jobs-state", "", "")
 	flag.DurationVar(&timeout, "timeout", 2*time.Hour, "timeout for leased jobs to be retried")
 }
 
@@ -61,11 +61,10 @@ func main() {
 	s := prometheusx.MustServeMetrics()
 
 	// Setup handler.
-	h := &jobs.Handler{Output: output, Timeout: timeout}
+	h := &jobs.Handler{JobsStateFile: output, Timeout: timeout}
 	rtx.Must(h.Load(output), "failed to load saved jobs data")
 	go h.Save(mainCtx, time.NewTicker(5*time.Second))
 
-	// mux := http.NewServeMux()
 	mux := s.Handler.(*http.ServeMux)
 	mux.HandleFunc("/v1/init", h.Init)
 	mux.HandleFunc("/v1/lease",
