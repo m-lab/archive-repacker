@@ -14,16 +14,14 @@ before_install:
 - go install -v github.com/mattn/goveralls@latest
 # Install dependencies, including test dependencies.
 - sudo apt-get update
-- go get -v -t ./...
 
 script:
 # Vet the code, build the code, and run all the tests.
-#- go get -u ./...
-#- go vet ./...
 #- CGO_ENABLED=0 go build ./...
-#- go test ./... -race
-#- go test ./... -v -coverprofile=_coverage.cov
-- travis_wait 40 sh -c 'docker run -w $GODIR -v $PWD:$GODIR $IMAGE
+# NOTE: using -race appears to cause the process to hang indefinitely.
+- docker run -w $GODIR -v $PWD:$GODIR $IMAGE sh -c
+  'go get -u ./... &&
+   go vet ./... &&
    go test ./... -v -coverprofile=_coverage.cov'
 
 
