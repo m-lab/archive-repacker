@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/bigquery"
+	"github.com/googleapis/google-cloud-go-testing/bigquery/bqiface"
 	"github.com/m-lab/go/logx"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -32,9 +33,14 @@ var (
 	)
 )
 
+// Querier interface are types supporting a Query operation.
+type Querier interface {
+	Query(s string) bqiface.Query
+}
+
 // Run collects all rows of the parameterized type from a job based on the given
 // query and any query parameters.
-func Run[Row any](ctx context.Context, c *bigquery.Client, query string, params map[string]interface{}) ([]Row, error) {
+func Run[Row any](ctx context.Context, c Querier, query string, params map[string]interface{}) ([]Row, error) {
 	t := time.Now()
 
 	var queryParams []bigquery.QueryParameter
@@ -43,18 +49,19 @@ func Run[Row any](ctx context.Context, c *bigquery.Client, query string, params 
 	}
 
 	q := c.Query(query)
-	q.QueryConfig = bigquery.QueryConfig{
-		Q:          query,
-		Priority:   bigquery.BatchPriority,
-		Parameters: queryParams,
-	}
+	q.SetQueryConfig(bqiface.QueryConfig{
+		QueryConfig: bigquery.QueryConfig{
+			Q:          query,
+			Priority:   bigquery.BatchPriority,
+			Parameters: queryParams,
+		}})
 	it, err := q.Read(ctx)
 	if err != nil {
 		repackerQueryErrors.Inc()
 		return nil, err
 	}
 	results := make([]Row, 0, 1000)
-	logx.Debug.Printf("context %p: start query rows: %d, %s", ctx, it.TotalRows, time.Since(t))
+	logx.Debug.Printf("context %p: start query rows: %d, %s", ctx, it.TotalRows(), time.Since(t))
 	for {
 		var row Row
 		err = it.Next(&row)
@@ -69,6 +76,6 @@ func Run[Row any](ctx context.Context, c *bigquery.Client, query string, params 
 		repackerQueryErrors.Inc()
 		return nil, err
 	}
-	log.Printf("context %p: complete query rows: %d, %s", ctx, it.TotalRows, time.Since(t))
+	log.Printf("context %p: complete query rows: %d, %s", ctx, it.TotalRows(), time.Since(t))
 	return results, nil
 }

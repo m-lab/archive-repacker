@@ -2,14 +2,12 @@ package query
 
 import (
 	"context"
+	"errors"
 	"testing"
 
-	"cloud.google.com/go/bigquery"
-	"github.com/goccy/bigquery-emulator/server"
 	"github.com/google/go-cmp/cmp"
-	"google.golang.org/api/option"
 
-	"github.com/m-lab/go/testingx"
+	"github.com/m-lab/go/cloud/bqfake"
 )
 
 func TestRun(t *testing.T) {
@@ -20,6 +18,7 @@ func TestRun(t *testing.T) {
 		name    string
 		date    string
 		query   string
+		config  bqfake.QueryConfig[Row]
 		want    []Row
 		wantErr bool
 	}{
@@ -27,34 +26,37 @@ func TestRun(t *testing.T) {
 			name:  "success-template-variable",
 			date:  "2023-01-01",
 			query: `SELECT CAST(date AS STRING) as Date FROM (SELECT DATE("2023-01-01") as date) WHERE date = @date`,
+			config: bqfake.QueryConfig[Row]{
+				RowIteratorConfig: bqfake.RowIteratorConfig[Row]{
+					Rows: []Row{{Date: "2023-01-01"}},
+				},
+			},
 			want: []Row{
 				{Date: "2023-01-01"},
 			},
 		},
 		{
-			name:    "error-canceled-context",
+			name: "error-row-iterator",
+			config: bqfake.QueryConfig[Row]{
+				RowIteratorConfig: bqfake.RowIteratorConfig[Row]{
+					IterErr: errors.New("fake iterator error"),
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "error-read",
+			config: bqfake.QueryConfig[Row]{
+				ReadErr: errors.New("read error"),
+			},
 			wantErr: true,
 		},
 	}
 
-	bqServer, err := server.New(server.TempStorage)
-	testingx.Must(t, err, "failed to start fake bq server")
-	defer bqServer.Close()
-	bqServer.SetProject("test-project")
-	testServer := bqServer.TestServer()
-	defer testServer.Close()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client, err := bigquery.NewClient(context.Background(), "test-project", option.WithEndpoint(testServer.URL), option.WithoutAuthentication())
-			testingx.Must(t, err, "failed to create bq client")
-			defer client.Close()
-
-			ctx, cancel := context.WithCancel(context.Background())
-			if tt.wantErr {
-				cancel()
-			}
-			defer cancel()
-
+			client := bqfake.NewQueryReadClient[Row](tt.config)
+			ctx := context.Background()
 			p := map[string]interface{}{
 				"date": tt.date,
 			}
