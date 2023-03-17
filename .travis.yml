@@ -20,8 +20,8 @@ script:
 #- CGO_ENABLED=0 go build ./...
 #   go vet ./... &&
 # NOTE: using -race appears to cause the process to hang indefinitely.
-- travis_wait 40 sh -c 'docker run -w $GODIR -v $PWD:$GODIR $IMAGE sh -c
-  "go test ./... -v -coverprofile=_coverage.cov"'
+- docker run -w $GODIR -v $PWD:$GODIR $IMAGE sh -c
+  "go test ./... -v -coverprofile=_coverage.cov"
 
 
 after_success:
