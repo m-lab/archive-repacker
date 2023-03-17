@@ -5,6 +5,11 @@ go:
 services:
 - docker
 
+env:
+  global:
+    - GODIR=/go/src/github.com/m-lab/archive-repacker
+    - IMAGE=soltesz/archive-repacker:v1.20-testing
+
 before_install:
 - go install -v github.com/mattn/goveralls@latest
 # Install dependencies, including test dependencies.
@@ -14,12 +19,14 @@ before_install:
 script:
 # Vet the code, build the code, and run all the tests.
 #- go get -u ./...
-#-go vet ./...
+#- go vet ./...
 #- CGO_ENABLED=0 go build ./...
 #- go test ./... -race
 #- go test ./... -v -coverprofile=_coverage.cov
-- travis_wait 60 sh -c 'docker build -f Dockerfile.testing -t local-bigquery-testing .'
-- docker run -it local-bigquery-testing
+- docker run -w $GODIR -v $PWD:$GODIR -it $IMAGE
+    go test -v ./... -race
+- docker run -w $GODIR -v $PWD:$GODIR -it $IMAGE
+    go test ./... -v -coverprofile=_coverage.cov
 
 
 after_success:
