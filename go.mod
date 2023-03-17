@@ -9,7 +9,7 @@ require (
 	github.com/fsouza/fake-gcs-server v1.44.0
 	github.com/goccy/bigquery-emulator v0.2.14
 	github.com/google/go-cmp v0.5.9
-	github.com/m-lab/go v0.1.59
+	github.com/m-lab/go v0.1.60
 	github.com/prometheus/client_golang v1.7.1
 	google.golang.org/api v0.106.0
 )
@@ -46,6 +46,7 @@ require (
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.2.1 // indirect
 	github.com/googleapis/gax-go/v2 v2.7.0 // indirect
+	github.com/googleapis/google-cloud-go-testing v0.0.0-20210719221736-1c9a4c676720 // indirect
 	github.com/gorilla/handlers v1.5.1 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/klauspost/asmfmt v1.3.2 // indirect
