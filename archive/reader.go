@@ -76,8 +76,6 @@ func NewGCSReader(ctx context.Context, client *storage.Client, url string) (*Rea
 	// Create reader and load content into memory.
 	err = retry(1, func() error {
 		buf = &bytes.Buffer{}
-		ctx, cancel := context.WithCancel(ctx)
-		defer cancel()
 		rdr, err := path.Reader(ctx, client)
 		if err != nil {
 			return err
