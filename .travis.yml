@@ -17,12 +17,11 @@ before_install:
 
 script:
 # Vet the code, build the code, and run all the tests.
-#- CGO_ENABLED=0 go build ./...
-#   go vet ./... &&
-# NOTE: using -race appears to cause the process to hang indefinitely.
-- docker run -w $GODIR -v $GOPATH/pkg/mod:/go/pkg/mod -v $PWD:$GODIR $IMAGE sh -c
-  "go test ./... -v -coverprofile=_coverage.cov"
-
+- go get -u ./...
+- go vet ./...
+- CGO_ENABLED=0 go build ./...
+- go test ./... -race
+- go test ./... -v -coverprofile=_coverage.cov
 
 after_success:
 # Coveralls
