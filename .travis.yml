@@ -23,10 +23,8 @@ script:
 #- CGO_ENABLED=0 go build ./...
 #- go test ./... -race
 #- go test ./... -v -coverprofile=_coverage.cov
-- docker run -w $GODIR -v $PWD:$GODIR -it $IMAGE
-    go test -v ./... -race
-- docker run -w $GODIR -v $PWD:$GODIR -it $IMAGE
-    go test ./... -v -coverprofile=_coverage.cov
+- travis_wait 40 sh -c 'docker run -w $GODIR -v $PWD:$GODIR -it $IMAGE
+   go test -v ./... -race && go test ./... -v -coverprofile=_coverage.cov'
 
 
 after_success:
