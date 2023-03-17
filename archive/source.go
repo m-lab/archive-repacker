@@ -15,7 +15,6 @@ import (
 )
 
 var (
-	ErrCorrupt        = errors.New("file data was corrupt")
 	ErrNotRegularFile = errors.New("file type is not regular")
 )
 
