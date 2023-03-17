@@ -2,14 +2,6 @@ language: go
 go:
 - 1.20
 
-services:
-- docker
-
-env:
-  global:
-    - GODIR=/go/src/github.com/m-lab/archive-repacker
-    - IMAGE=soltesz/archive-repacker:v1.20-testing
-
 before_install:
 - go install -v github.com/mattn/goveralls@latest
 # Install dependencies, including test dependencies.
