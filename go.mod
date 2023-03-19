@@ -10,7 +10,7 @@ require (
 	github.com/google/go-cmp v0.5.9
 	github.com/googleapis/google-cloud-go-testing v0.0.0-20210719221736-1c9a4c676720
 	github.com/m-lab/go v0.1.60
-	github.com/prometheus/client_golang v1.7.1
+	github.com/prometheus/client_golang v1.14.0
 	google.golang.org/api v0.106.0
 )
 
@@ -32,7 +32,6 @@ require (
 	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
 	github.com/pkg/xattr v0.4.9 // indirect
-	github.com/prometheus/client_golang v1.14.0 // indirect
 	github.com/prometheus/client_model v0.3.0 // indirect
 	github.com/prometheus/common v0.37.0 // indirect
 	github.com/prometheus/procfs v0.8.0 // indirect
