@@ -23,29 +23,29 @@ var (
 	)
 )
 
-// A Target represents a single, compressed, tar archive containing files to be
+// A Writer represents a single, compressed, tar archive containing files to be
 // uploaded to GCS.
-type Target struct {
+type Writer struct {
 	Bytes      *bytes.Buffer
 	tarWriter  *tar.Writer
 	gzipWriter *gzip.Writer
 	Count      int
 }
 
-// NewTarget creates a new Target for adding files to a compressed tar archive.
-func NewTarget() *Target {
+// NewWriter creates a new Writer for adding files to a compressed tar archive.
+func NewWriter() *Writer {
 	buffer := &bytes.Buffer{}
 	gzipWriter := gzip.NewWriter(buffer)
 	tarWriter := tar.NewWriter(gzipWriter)
-	return &Target{
+	return &Writer{
 		Bytes:      buffer,
 		tarWriter:  tarWriter,
 		gzipWriter: gzipWriter,
 	}
 }
 
-// Add appends a single file to the Target archive with the given header and file contents.
-func (ar *Target) AddFile(h *tar.Header, contents []byte) {
+// AddFile appends a single file to the Writer with the given header and file contents.
+func (ar *Writer) AddFile(h *tar.Header, contents []byte) {
 	if h != nil {
 		rtx.Must(ar.tarWriter.WriteHeader(h), "Could not write the tarfile header for %v", h.Name)
 		_, err := ar.tarWriter.Write(contents)
@@ -57,14 +57,14 @@ func (ar *Target) AddFile(h *tar.Header, contents []byte) {
 	}
 }
 
-// Close closes the Target archive.
-func (ar *Target) Close() error {
+// Close closes the Writer archive.
+func (ar *Writer) Close() error {
 	ar.tarWriter.Close()
 	return ar.gzipWriter.Close()
 }
 
-// Uploads the completed Target archive contents to GCS.
-func (ar *Target) Upload(ctx context.Context, client *storage.Client, p *Path) error {
+// Uploads the completed Writer archive contents to GCS.
+func (ar *Writer) Upload(ctx context.Context, client *storage.Client, p *Path) error {
 	sctx, cancel := context.WithTimeout(ctx, 20*time.Minute)
 	defer cancel()
 
