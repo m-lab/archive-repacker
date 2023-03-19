@@ -8,7 +8,7 @@ import (
 	"github.com/m-lab/go/testingx"
 )
 
-func TestNewTarget(t *testing.T) {
+func TestNewWriter(t *testing.T) {
 	tests := []struct {
 		name    string
 		file    string
@@ -43,9 +43,9 @@ func TestNewTarget(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			src, err := NewFileSource(tt.file)
+			src, err := NewFileReader(tt.file)
 			testingx.Must(t, err, "failed to open file: %s", tt.file)
-			out := NewTarget()
+			out := NewWriter()
 
 			// Copy input to output
 			for {
@@ -53,7 +53,7 @@ func TestNewTarget(t *testing.T) {
 				if err != nil {
 					break
 				}
-				out.AddFile(CopyHeader(h), b)
+				testingx.Must(t, out.AddFile(CopyHeader(h), b), "failed to add file to output")
 			}
 			src.Close()
 			out.Close()
@@ -62,11 +62,23 @@ func TestNewTarget(t *testing.T) {
 
 			// Verify & Upload
 			if out.Count != src.Count {
-				t.Errorf("Target.Count = %d, want %d", out.Count, src.Count)
+				t.Errorf("Writer.Count = %d, want %d", out.Count, src.Count)
 			}
 			err = out.Upload(context.Background(), client, p)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("Target.Upload() = %v, want nil", err)
+				t.Errorf("Writer.Upload() = %v, want nil", err)
+			}
+			obj := client.Bucket(p.Bucket()).Object(p.Object())
+			attr, err := obj.Attrs(context.Background())
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Object.Attrs() = %v, wantErr %t", err, tt.wantErr)
+			}
+			if tt.wantErr {
+				return
+			}
+			// Is the uploaded object the same size as the original one?
+			if attr.Size != int64(src.Size) {
+				t.Errorf("Object.Attr.Size = %d, want %d", attr.Size, src.Size)
 			}
 		})
 	}
