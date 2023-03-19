@@ -1,6 +1,7 @@
 package archive
 
 import (
+	"archive/tar"
 	"context"
 	"testing"
 
@@ -79,6 +80,35 @@ func TestNewWriter(t *testing.T) {
 			// Is the uploaded object the same size as the original one?
 			if attr.Size != int64(src.Size) {
 				t.Errorf("Object.Attr.Size = %d, want %d", attr.Size, src.Size)
+			}
+		})
+	}
+}
+
+func TestWriter_AddFile(t *testing.T) {
+	tests := []struct {
+		name     string
+		h        *tar.Header
+		contents []byte
+		wantErr  bool
+	}{
+		{
+			name: "success-nil-header",
+		},
+		{
+			name: "error-corrupt-header",
+			h: &tar.Header{
+				Format: ^tar.FormatGNU, // invalid format
+				Size:   -1,
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out := NewWriter()
+			if err := out.AddFile(tt.h, tt.contents); (err != nil) != tt.wantErr {
+				t.Errorf("Writer.AddFile() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
