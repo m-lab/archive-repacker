@@ -26,10 +26,11 @@ var (
 // A Writer represents a single, compressed, tar archive containing files to be
 // uploaded to GCS.
 type Writer struct {
-	Bytes      *bytes.Buffer
+	// Count is the number of files written to the archive.
+	Count      int
+	bytes      *bytes.Buffer
 	tarWriter  *tar.Writer
 	gzipWriter *gzip.Writer
-	Count      int
 }
 
 // NewWriter creates a new Writer for adding files to a compressed tar archive.
@@ -38,23 +39,33 @@ func NewWriter() *Writer {
 	gzipWriter := gzip.NewWriter(buffer)
 	tarWriter := tar.NewWriter(gzipWriter)
 	return &Writer{
-		Bytes:      buffer,
+		bytes:      buffer,
 		tarWriter:  tarWriter,
 		gzipWriter: gzipWriter,
 	}
 }
 
 // AddFile appends a single file to the Writer with the given header and file contents.
-func (ar *Writer) AddFile(h *tar.Header, contents []byte) {
-	if h != nil {
-		rtx.Must(ar.tarWriter.WriteHeader(h), "Could not write the tarfile header for %v", h.Name)
-		_, err := ar.tarWriter.Write(contents)
-		rtx.Must(err, "Could not write the tarfile contents for %v", h.Name)
-		// Flush the data so that our in-memory filesize is accurate.
-		rtx.Must(ar.tarWriter.Flush(), "Could not flush the tarWriter")
-		rtx.Must(ar.gzipWriter.Flush(), "Could not flush the gzipWriter")
-		ar.Count++
+func (ar *Writer) AddFile(h *tar.Header, contents []byte) error {
+	if h == nil {
+		return nil
 	}
+	err := ar.tarWriter.WriteHeader(h)
+	if err != nil {
+		return err
+	}
+	for total := 0; total < len(contents); {
+		n, err := ar.tarWriter.Write(contents[total:])
+		if err != nil {
+			return err
+		}
+		total += n
+	}
+	// Flush the data so that our in-memory filesize is accurate.
+	rtx.Must(ar.tarWriter.Flush(), "Could not flush the tarWriter")
+	rtx.Must(ar.gzipWriter.Flush(), "Could not flush the gzipWriter")
+	ar.Count++
+	return nil
 }
 
 // Close closes the Writer archive.
@@ -71,7 +82,7 @@ func (ar *Writer) Upload(ctx context.Context, client *storage.Client, p *Path) e
 	writer := p.Writer(sctx, client)
 	ar.Close()
 
-	contents := ar.Bytes.Bytes()
+	contents := ar.bytes.Bytes()
 	for total := 0; total < len(contents); {
 		n, err := writer.Write(contents[total:])
 		if err != nil {
