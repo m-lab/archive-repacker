@@ -49,6 +49,7 @@ func NewFileReader(file string) (*Reader, error) {
 		return nil, err
 	}
 	buf := bytes.NewBuffer(b)
+	size := buf.Len()
 
 	// Uncompress the archive.
 	gzr, err := gzip.NewReader(buf)
@@ -62,7 +63,7 @@ func NewFileReader(file string) (*Reader, error) {
 		Path:      path,
 		tarReader: tarReader,
 		Closer:    gzr,
-		Size:      len(b),
+		Size:      size,
 	}
 	return s, nil
 }
@@ -97,6 +98,7 @@ func NewGCSReader(ctx context.Context, client *storage.Client, url string) (*Rea
 	if err != nil {
 		return nil, err
 	}
+	size := buf.Len()
 
 	// Uncompress the archive.
 	gzr, err := gzip.NewReader(buf)
@@ -111,7 +113,7 @@ func NewGCSReader(ctx context.Context, client *storage.Client, url string) (*Rea
 		Path:      path,
 		tarReader: tarReader,
 		Closer:    gzr,
-		Size:      buf.Len(),
+		Size:      size,
 	}
 	return gcs, nil
 }
