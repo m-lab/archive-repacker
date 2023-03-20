@@ -74,7 +74,7 @@ func (ar *Writer) Close() error {
 	return ar.gzipWriter.Close()
 }
 
-// Uploads the completed Writer archive contents to GCS.
+// Upload writes the completed Writer archive contents to the named GCS Path.
 func (ar *Writer) Upload(ctx context.Context, client *storage.Client, p *Path) error {
 	sctx, cancel := context.WithTimeout(ctx, 20*time.Minute)
 	defer cancel()
