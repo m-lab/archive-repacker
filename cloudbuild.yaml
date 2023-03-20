@@ -11,13 +11,12 @@ steps:
   - ls -l
   - pwd
   - env
-  - cd /go/src/github.com/m-lab/archive-repacker
   - go version
   - go get -v -t ./...
   - go test -v -race
   - go test -v ./...
-  env:
-  - WORKSPACE_LINK=/go/src/github.com/m-lab/archive-repacker
+  # env:
+  # - WORKSPACE_LINK=/go/src/github.com/m-lab/archive-repacker
 
 - name: gcr.io/cloud-builders/docker
   id: "Build the job-server docker image"
