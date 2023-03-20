@@ -8,12 +8,9 @@ steps:
 - name: gcr.io/$PROJECT_ID/golang-cbif:1.20
   id: "Run all unit tests"
   args:
-  - ls -l
-  - pwd
-  - env
   - go version
   - go get -v -t ./...
-  # - go test -v -race ./...
+  - go test -v -race ./...
   - go test -v ./...
 
 - name: gcr.io/cloud-builders/docker
