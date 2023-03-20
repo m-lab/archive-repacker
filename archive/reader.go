@@ -30,8 +30,6 @@ type Reader struct {
 	Path *Path
 	// Count is the number of files read from the archive.
 	Count int
-	// Size is the number of bytes in the archive.
-	Size int
 	io.Closer
 	tarReader
 }
@@ -49,7 +47,6 @@ func NewFileReader(file string) (*Reader, error) {
 		return nil, err
 	}
 	buf := bytes.NewBuffer(b)
-	size := buf.Len()
 
 	// Uncompress the archive.
 	gzr, err := gzip.NewReader(buf)
@@ -63,7 +60,6 @@ func NewFileReader(file string) (*Reader, error) {
 		Path:      path,
 		tarReader: tarReader,
 		Closer:    gzr,
-		Size:      size,
 	}
 	return s, nil
 }
@@ -98,7 +94,6 @@ func NewGCSReader(ctx context.Context, client *storage.Client, url string) (*Rea
 	if err != nil {
 		return nil, err
 	}
-	size := buf.Len()
 
 	// Uncompress the archive.
 	gzr, err := gzip.NewReader(buf)
@@ -113,7 +108,6 @@ func NewGCSReader(ctx context.Context, client *storage.Client, url string) (*Rea
 		Path:      path,
 		tarReader: tarReader,
 		Closer:    gzr,
-		Size:      size,
 	}
 	return gcs, nil
 }
