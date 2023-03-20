@@ -15,8 +15,6 @@ steps:
   - go get -v -t ./...
   # - go test -v -race ./...
   - go test -v ./...
-  # env:
-  # - WORKSPACE_LINK=/go/src/github.com/m-lab/archive-repacker
 
 - name: gcr.io/cloud-builders/docker
   id: "Build the job-server docker image"
@@ -26,8 +24,14 @@ steps:
       "-f", "Dockerfile.job-server", "."
   ]
 
+- name: gcr.io/cloud-builders/docker
+  id: "Push the docker container to gcr.io"
+  args: [
+    "push", "gcr.io/$PROJECT_ID/archive-repacker:job-server-${COMMIT_SHA}",
+  ]
+
 - name: gcr.io/cloud-builders/kubectl
-  id: "Deploy universal gardener configuration"
+  id: "Deploy job-server configuration"
   entrypoint: /bin/bash
   args:
   - -c
