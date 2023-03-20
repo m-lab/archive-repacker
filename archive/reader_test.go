@@ -62,7 +62,7 @@ func TestNewFileReader(t *testing.T) {
 			p, err := ParseArchiveURL(tt.file)
 			testingx.Must(t, err, "failed to parse input filename")
 			s, err := os.Stat(p.Filename())
-			testingx.Must(t, err, "failed to fine input filename")
+			testingx.Must(t, err, "failed to find input filename")
 			if got.Size != int(s.Size()) {
 				t.Errorf("Reader.Size = %v, want %v", got.Size, s.Size())
 			}
