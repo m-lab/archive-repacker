@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"fmt"
 	"time"
 
 	"cloud.google.com/go/storage"
@@ -52,12 +53,12 @@ func (ar *Writer) AddFile(h *tar.Header, contents []byte) error {
 	}
 	err := ar.tarWriter.WriteHeader(h)
 	if err != nil {
-		return err
+		return fmt.Errorf("writing header for %q failed: %w", h.Name, err)
 	}
 	for total := 0; total < len(contents); {
 		n, err := ar.tarWriter.Write(contents[total:])
 		if err != nil {
-			return err
+			return fmt.Errorf("writing contents for %q failed: %w", h.Name, err)
 		}
 		total += n
 	}
@@ -86,10 +87,14 @@ func (ar *Writer) Upload(ctx context.Context, client *storage.Client, p *Path) e
 	for total := 0; total < len(contents); {
 		n, err := writer.Write(contents[total:])
 		if err != nil {
-			return err
+			return fmt.Errorf("writing content to %q failed: %w", p.String(), err)
 		}
 		total += n
 	}
 	repackerArchiveUploads.Inc()
-	return writer.Close()
+	err := writer.Close()
+	if err != nil {
+		return fmt.Errorf("closing writer for %q failed: %w", p.String(), err)
+	}
+	return nil
 }
