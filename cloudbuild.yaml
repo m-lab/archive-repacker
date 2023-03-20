@@ -3,7 +3,6 @@ timeout: 1800s
 options:
   env:
   - PROJECT_ID=$PROJECT_ID
-  - GIT_COMMIT=$COMMIT_SHA
 
 steps:
 - name: gcr.io/$PROJECT_ID/golang-cbif:1.20
@@ -20,7 +19,7 @@ steps:
   id: "Build the job-server docker image"
   args: [
     "build",
-      "-t", "gcr.io/$PROJECT_ID/archive-repacker:job-server-${GIT_COMMIT}",
+      "-t", "gcr.io/$PROJECT_ID/archive-repacker:job-server-${COMMIT_SHA}",
       "-f", "Dockerfile.job-server", "."
   ]
 
@@ -30,7 +29,7 @@ steps:
   args:
   - -c
   - |-
-    sed -i -e 's/{{GIT_COMMIT}}/'${GIT_COMMIT}'/g' k8s/job-server.yaml
+    sed -i -e 's/{{COMMIT_SHA}}/'${COMMIT_SHA}'/g' k8s/job-server.yaml
     /builder/kubectl.bash apply --recursive -f k8s/
   env:
   - CLOUDSDK_COMPUTE_REGION=us-east1
