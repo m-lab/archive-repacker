@@ -3,6 +3,7 @@ package archive
 import (
 	"context"
 	"io"
+	"os"
 	"testing"
 	"time"
 
@@ -57,6 +58,13 @@ func TestNewFileReader(t *testing.T) {
 			}
 			if got.Count != tt.wantCount {
 				t.Errorf("Reader.Count = %v, want %v", got.Count, tt.wantCount)
+			}
+			p, err := ParseArchiveURL(tt.file)
+			testingx.Must(t, err, "failed to parse input filename")
+			s, err := os.Stat(p.Filename())
+			testingx.Must(t, err, "failed to fine input filename")
+			if got.Size != int(s.Size()) {
+				t.Errorf("Reader.Size = %v, want %v", got.Size, s.Size())
 			}
 		})
 	}
@@ -139,6 +147,18 @@ func TestNewGCSReader(t *testing.T) {
 			src.Close()
 			if src.Count != tt.wantCount {
 				t.Errorf("output file counts do not match: %d %d", src.Count, tt.wantCount)
+			}
+			if tt.wantErr {
+				return
+			}
+			// Read object attr size.
+			p, err := ParseArchiveURL(tt.url)
+			testingx.Must(t, err, "failed to parse output gcs path")
+			obj := client.Bucket(p.Bucket()).Object(p.Object())
+			attr, err := obj.Attrs(context.Background())
+			testingx.Must(t, err, "failed to read object attrs")
+			if src.Size != int(attr.Size) {
+				t.Errorf("Reader.Size = %d, want %d", src.Size, attr.Size)
 			}
 		})
 	}
