@@ -11,6 +11,7 @@ steps:
   - ls -l
   - pwd
   - env
+  - cd /go/src/github.com/m-lab/archive-repacker
   - go version
   - go get -v -t ./...
   - go test -v -race
