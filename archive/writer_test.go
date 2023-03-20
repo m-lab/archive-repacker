@@ -44,13 +44,15 @@ func TestNewWriter(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			var h *tar.Header
+			var b []byte
 			src, err := NewFileReader(tt.file)
 			testingx.Must(t, err, "failed to open file: %s", tt.file)
 			out := NewWriter()
 
 			// Copy input to output
 			for {
-				h, b, err := src.NextFile()
+				h, b, err = src.NextFile()
 				if err != nil {
 					break
 				}
