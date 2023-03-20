@@ -5,7 +5,6 @@ COPY . .
 # Build job-server and put the git commit hash into the binary.
 RUN go get -v ./...
 RUN go install \
-      -v \
       -ldflags "-X github.com/m-lab/go/prometheusx.GitShortCommit=$(git log -1 --format=%h)$(git diff --quiet || echo dirty)" \
       ./cmd/job-server
 

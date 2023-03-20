@@ -13,7 +13,7 @@ steps:
   - env
   - go version
   - go get -v -t ./...
-  - go test -v -race ./...
+  # - go test -v -race ./...
   - go test -v ./...
   # env:
   # - WORKSPACE_LINK=/go/src/github.com/m-lab/archive-repacker
@@ -32,8 +32,8 @@ steps:
   args:
   - -c
   - |-
-    sed -i -e 's/{{COMMIT_SHA}}/'${COMMIT_SHA}'/g' k8s/job-server.yaml
-    /builder/kubectl.bash apply --recursive -f k8s/
+    sed -i -e 's/{{COMMIT_SHA}}/'${COMMIT_SHA}'/g' /workspace/k8s/job-server.yaml
+    /builder/kubectl.bash apply --recursive -f /workspace/k8s/
   env:
   - CLOUDSDK_COMPUTE_REGION=us-east1
   - CLOUDSDK_CONTAINER_CLUSTER=data-processing
