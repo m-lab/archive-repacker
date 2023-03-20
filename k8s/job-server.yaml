@@ -53,7 +53,7 @@ spec:
         image: gcr.io/{{PROJECT_ID}}/archive-repacker:job-server-{{COMMIT_SHA}}
         args:
         - -addr=:8083
-        - -output=/singleton/jobs.json
+        - -jobs-state=/singleton/jobs.json
         - -timeout=1h
         - -logx.debug=true
         ports:
