@@ -50,7 +50,7 @@ spec:
     spec:
       containers:
       - name: job-server
-        image: measurementlab/archive-repacker:job-server-{{COMMIT_SHA}}
+        image: gcr.io/{{PROJECT_ID}}/archive-repacker:job-server-{{COMMIT_SHA}}
         args:
         - -addr=:8083
         - -output=/singleton/jobs.json
