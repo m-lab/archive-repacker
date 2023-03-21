@@ -99,37 +99,14 @@ type Reprocessor[Row any] struct {
 
 // ProcessDate processes all archives found on a given date.
 func (r *Reprocessor[Row]) ProcessDate(ctx context.Context, date string) error {
+	// Initialize process with current date.
 	r.Process.Init(ctx, date)
 
-	// Here we collect results quickly, and then process in a second loop below.
+	// Collect BigQuery results quickly, and then process in a second loop below.
 	// Processing results one row at a time (regardless of timeout) causes long
 	// invocations of query.Run, and the query fails too frequently due to 503
 	// or similar errors.
-	qctx, qcancel := context.WithTimeout(ctx, time.Hour)
-	defer qcancel()
-
-	var err error
-	var results []Row
-	t := time.Now()
-	err = retry(QueryRetries, func() error {
-		param := []bigquery.QueryParameter{
-			{Name: "date", Value: date},
-		}
-		results, err = query.Run[Row](qctx, r.Client, r.Query, param)
-		if err != nil {
-			// Retry
-			repackerQueryErrors.Inc()
-			log.Println("Failed to run query (retrying after ~1m):", err)
-			time.Sleep(time.Second * time.Duration(rand.Intn(MaxDelaySeconds)))
-			return err
-		}
-		return nil
-	})
-	if err != nil {
-		log.Println("query failed too many times:", err)
-		return err
-	}
-	repackerQueryCompletionTime.Observe(time.Since(t).Seconds())
+	results, err := r.runQuery(ctx, date)
 
 	// Processing all results can take several hours or longer.
 	pctx, pcancel := context.WithCancel(ctx)
@@ -210,4 +187,33 @@ func (r *Reprocessor[Row]) ProcessRow(ctx context.Context, date string, row Row)
 	// archive. Finish archive processing, e.g. upload to alternate bucket.
 	src.Close()
 	return r.Process.Finish(ctx, out)
+}
+
+func (r *Reprocessor[Row]) runQuery(ctx context.Context, date string) ([]Row, error) {
+	qctx, qcancel := context.WithTimeout(ctx, time.Hour)
+	defer qcancel()
+
+	var err error
+	var results []Row
+	t := time.Now()
+	err = retry(QueryRetries, func() error {
+		param := []bigquery.QueryParameter{
+			{Name: "date", Value: date},
+		}
+		results, err = query.Run[Row](qctx, r.Client, r.Query, param)
+		if err != nil {
+			// Retry
+			repackerQueryErrors.Inc()
+			log.Println("Failed to run query (retrying after ~1m):", err)
+			time.Sleep(time.Second * time.Duration(rand.Intn(MaxDelaySeconds)))
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		log.Println("query failed too many times:", err)
+		return nil, err
+	}
+	repackerQueryCompletionTime.Observe(time.Since(t).Seconds())
+	return results, nil
 }
