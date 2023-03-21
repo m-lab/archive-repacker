@@ -67,3 +67,40 @@ func (c *Client) Lease(ctx context.Context) (string, error) {
 	b, err := ioutil.ReadAll(resp.Body)
 	return string(b), err
 }
+
+// Update accepts a previously leased date and updates the date. Dates in
+// progress should be updated more frequently than the job-server lease timeout.
+func (c *Client) Update(ctx context.Context, date string) error {
+	l := *c.Server
+	l.Path = "/v1/update"
+	q := l.Query()
+	q.Add("date", date)
+	l.RawQuery = q.Encode()
+	resp, err := makeRequest(ctx, c.Client, &l)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return errors.New("bad status: " + resp.Status)
+	}
+	defer resp.Body.Close()
+	return nil
+}
+
+// Complete accepts a previously leased date and marks it as complete.
+func (c *Client) Complete(ctx context.Context, date string) error {
+	l := *c.Server
+	l.Path = "/v1/complete"
+	q := l.Query()
+	q.Add("date", date)
+	l.RawQuery = q.Encode()
+	resp, err := makeRequest(ctx, c.Client, &l)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return errors.New("bad status: " + resp.Status)
+	}
+	defer resp.Body.Close()
+	return nil
+}

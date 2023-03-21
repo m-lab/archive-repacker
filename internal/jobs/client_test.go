@@ -106,3 +106,63 @@ func TestClient_Lease(t *testing.T) {
 		})
 	}
 }
+
+func TestClient_Update_and_Complete(t *testing.T) {
+	h := &Handler{}
+	tests := []struct {
+		name       string
+		jobs       Jobs
+		update     string
+		requestErr bool
+		wantErr    bool
+	}{
+		{
+			name: "success-update-and-complete",
+			jobs: Jobs{
+				Pending: []string{},
+				Leased: map[string]Job{
+					"2023-01-01": Job{Date: "2023-01-01", Updated: time.Time{}},
+				},
+				Completed: map[string]Job{},
+			},
+			update: "2023-01-01",
+		},
+		{
+			name:    "error-no-jobs-status-not-found",
+			wantErr: true,
+		},
+		{
+			name:       "error-corrupt-server-url",
+			requestErr: true,
+			wantErr:    true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h.jobs = tt.jobs
+			mux := http.NewServeMux()
+			mux.HandleFunc("/v1/update", h.Update)
+			mux.HandleFunc("/v1/complete", h.Complete)
+			s := httptest.NewServer(mux)
+			u, _ := url.Parse(s.URL)
+			if tt.requestErr {
+				// Corrupt server URL so new request fails.
+				u.Scheme = "-not-a-scheme-"
+			}
+
+			c := NewClient(u, http.DefaultClient)
+			err := c.Update(context.Background(), tt.update)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Client.Update() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			err = c.Complete(context.Background(), tt.update)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Client.Complete() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+		})
+	}
+}
