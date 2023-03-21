@@ -43,7 +43,7 @@ func TestClient_Lease(t *testing.T) {
 			expectErr: ErrWait,
 		},
 		{
-			name: "error-empty-no-leaded-no-pending",
+			name: "error-empty-no-leased-no-pending",
 			jobs: Jobs{
 				Pending: []string{},
 				Leased:  map[string]Job{},
