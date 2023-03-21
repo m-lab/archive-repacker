@@ -9,7 +9,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/googleapis/google-cloud-go-testing/bigquery/bqiface"
+	"github.com/m-lab/archive-repacker/internal/jobs"
 
 	"cloud.google.com/go/bigquery"
 	"github.com/prometheus/client_golang/prometheus"
@@ -22,11 +22,13 @@ var (
 	// MaxDelaySeconds is the maximum number of seconds to randomly wait in
 	// response to BigQuery errors.
 	MaxDelaySeconds = 60
-	ProcessRetries  = 10
-	QueryRetries    = 2
-
+	// ProcessRetries is the maximum number of times to retry processing a
+	// given row from BigQuery result.
+	ProcessRetries = 10
+	// QueryRetries is the maximum number of times to retry a query.
+	QueryRetries = 2
 	// ErrCorrupt may be returned by a processor implementation if the file
-	// content should be considered corrupt.
+	// content should be considered corrupt and not included in the output archive.
 	ErrCorrupt = errors.New("file content is corrupt")
 )
 
@@ -87,10 +89,10 @@ type Processor[Row any] interface {
 // returned in a BigQuery result Row and processed by a Processor that can act
 // on the same row type.
 type Reprocessor[Row any] struct {
-	// Jobs              jobs.Client
+	Jobs              jobs.Client
 	Process           Processor[Row]
 	OutBucket         string
-	Client            *bigquery.Client
+	Client            query.Querier
 	Query             string
 	RetryQueryOnError bool
 }
@@ -113,7 +115,7 @@ func (r *Reprocessor[Row]) ProcessDate(ctx context.Context, date string) error {
 		param := []bigquery.QueryParameter{
 			{Name: "date", Value: date},
 		}
-		results, err = query.Run[Row](qctx, bqiface.AdaptClient(r.Client), r.Query, param)
+		results, err = query.Run[Row](qctx, r.Client, r.Query, param)
 		if err != nil {
 			// Retry
 			repackerQueryErrors.Inc()
@@ -155,9 +157,9 @@ func (r *Reprocessor[Row]) ProcessDate(ctx context.Context, date string) error {
 
 func (r *Reprocessor[Row]) ProcessRow(ctx context.Context, date string, row Row) error {
 	// Update job server that this date is still in progress.
-	//uctx, ucancel := context.WithTimeout(ctx, time.Minute)
-	//defer ucancel()
-	//r.Jobs.Update(uctx, date)
+	uctx, ucancel := context.WithTimeout(ctx, time.Minute)
+	defer ucancel()
+	r.Jobs.Update(uctx, date)
 	repackerArchives.Inc()
 
 	// Create a new source and output archive, which may download the data in memory.
