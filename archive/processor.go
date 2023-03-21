@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"math/rand"
@@ -79,7 +80,9 @@ type Processor[Row any] interface {
 	Init(ctx context.Context, date string)
 	// Create a new archive source to read archive files to process.
 	Source(ctx context.Context, row Row) *Reader
-	// File processes the given file content.
+	// File processes the given file content. File should only return ErrCorrupt
+	// if the content is corrupt. If the file content cannot be processed for other
+	// reasons, then return the original data with no error.
 	File(h *tar.Header, b []byte) ([]byte, error)
 	// Finish concludes an archive after all files have been processed.
 	Finish(ctx context.Context, out *Writer) error
@@ -107,24 +110,17 @@ func (r *Reprocessor[Row]) ProcessDate(ctx context.Context, date string) error {
 	// invocations of query.Run, and the query fails too frequently due to 503
 	// or similar errors.
 	results, err := r.runQuery(ctx, date)
+	if err != nil {
+		return err
+	}
 
-	// Processing all results can take several hours or longer.
-	pctx, pcancel := context.WithCancel(ctx)
-	defer pcancel()
-
+	// Processing all results can take several hours.
 	log.Println(date, "Operating on archives:", len(results))
 	for i := 0; i < len(results); i++ {
 		t := time.Now()
-		err = retry(ProcessRetries, func() error {
-			err = r.ProcessRow(pctx, date, results[i])
-			if err != nil {
-				log.Printf("Retrying job %d due to err: %v", i, err)
-				return err
-			}
-			return nil
-		})
+		err = r.ProcessRow(ctx, date, results[i])
 		if err != nil {
-			log.Printf("Job %d failed too many times: %v", i, err)
+			log.Printf("Row processing failed %d due to err: %v", i, err)
 			return err
 		}
 		repackerArchiveCompletionTime.Observe(time.Since(t).Seconds())
@@ -139,33 +135,33 @@ func (r *Reprocessor[Row]) ProcessRow(ctx context.Context, date string, row Row)
 	r.Jobs.Update(uctx, date)
 	repackerArchives.Inc()
 
-	// Create a new source and output archive, which may download the data in memory.
-	src := r.Process.Source(ctx, row)
+	// Create a new source and output archive, which load the contents in memory.
+	sctx, scancel := context.WithTimeout(ctx, 20*time.Minute)
+	defer scancel()
+	src := r.Process.Source(sctx, row)
 	out := NewWriter()
 
-	var err error
 	var h *tar.Header
 	var b []byte
+	var err error
 	corrupt := 0
 
 	for {
-		// Read all files from the source.
+		// Read each file from the source.
 		h, b, err = src.NextFile()
 		if err != nil {
 			break
 		}
 
-		// Process this file. Note: File should only return one error; even if
-		// it cannot operate on the file data, it should return the original
-		// data rather than errors.
+		// Process the file.
 		b, err = r.Process.File(h, b)
 		if err == ErrCorrupt {
-			// Since file is corrupt, do not add to output archive.
 			corrupt++
+			// Since file is corrupt, do not add to output archive.
 			continue
 		}
 
-		// Add updated annotation to new archive.
+		// Add updated file content to new archive.
 		n := CopyHeader(h)
 		n.Size = int64(len(b))
 		out.AddFile(n, b)
@@ -189,6 +185,8 @@ func (r *Reprocessor[Row]) ProcessRow(ctx context.Context, date string, row Row)
 	return r.Process.Finish(ctx, out)
 }
 
+// runQuery runs the configured Reprocessor query for the given date then collects
+// and returns all results.
 func (r *Reprocessor[Row]) runQuery(ctx context.Context, date string) ([]Row, error) {
 	qctx, qcancel := context.WithTimeout(ctx, time.Hour)
 	defer qcancel()
@@ -212,7 +210,7 @@ func (r *Reprocessor[Row]) runQuery(ctx context.Context, date string) ([]Row, er
 	})
 	if err != nil {
 		log.Println("query failed too many times:", err)
-		return nil, err
+		return nil, fmt.Errorf("query failed too many times: %v", err)
 	}
 	repackerQueryCompletionTime.Observe(time.Since(t).Seconds())
 	return results, nil
