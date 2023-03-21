@@ -67,3 +67,6 @@ func (c *Client) Lease(ctx context.Context) (string, error) {
 	b, err := ioutil.ReadAll(resp.Body)
 	return string(b), err
 }
+func (c *Client) Update(ctx context.Context, date string) error {
+	return nil
+}
