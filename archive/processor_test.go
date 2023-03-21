@@ -3,14 +3,18 @@ package archive_test
 import (
 	"archive/tar"
 	"context"
+	"errors"
+	"io"
 	"log"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"testing"
 
-	"cloud.google.com/go/bigquery"
-	"github.com/goccy/bigquery-emulator/server"
+	"github.com/m-lab/go/cloud/bqfake"
+
 	"github.com/m-lab/archive-repacker/archive"
-	"github.com/m-lab/go/testingx"
-	"google.golang.org/api/option"
+	"github.com/m-lab/archive-repacker/internal/jobs"
 )
 
 type fakeRow struct {
@@ -39,20 +43,13 @@ func (f *fakeProcessor) File(h *tar.Header, b []byte) ([]byte, error) {
 func (f *fakeProcessor) Finish(ctx context.Context, out *archive.Writer) error { return nil }
 
 func TestReprocessor_ProcessDate(t *testing.T) {
-	bqServer, err := server.New(server.TempStorage)
-	testingx.Must(t, err, "failed to start fake bq server")
-	defer bqServer.Close()
-	bqServer.SetProject("test-project")
-	testServer := bqServer.TestServer()
-	defer testServer.Close()
-
-	ctx := context.Background()
-
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
+	// Hide logs during tests.
+	log.SetOutput(io.Discard)
 	tests := []struct {
 		name     string
 		date     string
 		query    string
+		config   bqfake.QueryConfig[fakeRow]
 		badCount int
 		wantErr  bool
 	}{
@@ -60,37 +57,65 @@ func TestReprocessor_ProcessDate(t *testing.T) {
 			name:  "success",
 			date:  "2023-01-01",
 			query: "SELECT 'file://./testdata/input.tgz' AS File",
+			config: bqfake.QueryConfig[fakeRow]{
+				RowIteratorConfig: bqfake.RowIteratorConfig[fakeRow]{
+					Rows: []fakeRow{{File: "file://./testdata/input.tgz"}},
+				},
+			},
 		},
 		{
-			name:  "success-corrupt-tarfile",
+			name:  "success-tarfile-is-corrupt",
 			date:  "2023-01-01",
 			query: "SELECT 'file://./testdata/corrupt-tarfile.tgz' AS File",
+			config: bqfake.QueryConfig[fakeRow]{
+				RowIteratorConfig: bqfake.RowIteratorConfig[fakeRow]{
+					Rows: []fakeRow{{File: "file://./testdata/corrupt-tarfile.tgz"}},
+				},
+			},
 		},
 		{
-			name:  "success-corrupt-file",
+			name:  "success-corrupt-file-within-tarfile",
 			date:  "2023-01-01",
 			query: "SELECT 'file://./testdata/corrupt.tgz' AS File",
+			config: bqfake.QueryConfig[fakeRow]{
+				RowIteratorConfig: bqfake.RowIteratorConfig[fakeRow]{
+					Rows: []fakeRow{{File: "file://./testdata/corrupt.tgz"}},
+				},
+			},
 		},
 		{
-			name:    "bad-query",
-			date:    "2023-01-01",
-			query:   "CORRUPT QUERY INVALID",
+			name:  "bad-query",
+			date:  "2023-01-01",
+			query: "CORRUPT QUERY INVALID",
+			config: bqfake.QueryConfig[fakeRow]{
+				ReadErr: errors.New("read error"),
+			},
 			wantErr: true,
 		},
 		{
-			name:     "bad-source-file-count",
-			date:     "2023-01-01",
-			query:    "SELECT 'file://./testdata/input.tgz' AS File",
+			name:  "bad-source-file-count",
+			date:  "2023-01-01",
+			query: "SELECT 'file://./testdata/input.tgz' AS File",
+			config: bqfake.QueryConfig[fakeRow]{
+				RowIteratorConfig: bqfake.RowIteratorConfig[fakeRow]{
+					Rows: []fakeRow{{File: "file://./testdata/input.tgz"}},
+				},
+			},
 			badCount: 1,
 			wantErr:  true,
 		},
 	}
-	//u, _ := url.Parse("http://localhost:12345")
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v1/update", http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		rw.WriteHeader(http.StatusOK)
+	}))
+	s := httptest.NewServer(mux)
+	u, _ := url.Parse(s.URL)
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client, err := bigquery.NewClient(ctx, "test-project", option.WithEndpoint(testServer.URL), option.WithoutAuthentication())
-			testingx.Must(t, err, "failed to create bq client")
-			defer client.Close()
+			client := bqfake.NewQueryReadClient[fakeRow](tt.config)
 			archive.MaxDelaySeconds = 1
 			archive.ProcessRetries = 0
 
@@ -99,12 +124,13 @@ func TestReprocessor_ProcessDate(t *testing.T) {
 				Process: p,
 				Client:  client,
 				Query:   tt.query,
-				/*Jobs: jobs.Client{
+				Jobs: jobs.Client{
 					Server: u,
 					Client: http.DefaultClient,
-				},*/
+				},
 			}
-			err = r.ProcessDate(context.TODO(), tt.date)
+			ctx := context.Background()
+			err := r.ProcessDate(ctx, tt.date)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ProcessDate() error; got %v, wantErr %t", err, tt.wantErr)
 			}
