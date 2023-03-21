@@ -72,6 +72,19 @@ type Handler struct {
 	jobs Jobs
 }
 
+// NewHandler creates a new, uninitialized Handler.
+func NewHandler(file string, timeout time.Duration) *Handler {
+	return &Handler{
+		JobsStateFile: file,
+		Timeout:       timeout,
+		jobs: Jobs{
+			Pending:   Sequence{},
+			Leased:    map[string]Job{},
+			Completed: map[string]Job{},
+		},
+	}
+}
+
 // Save periodically seriaizes the collection of Jobs to Handler.JobsStateFile, and
 // periodically checks for leased jobs that have been processing longer than
 // Handler.Timeout and returns them to Pending.
