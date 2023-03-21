@@ -92,7 +92,7 @@ func TestClient_Lease(t *testing.T) {
 			c := NewClient(u, http.DefaultClient)
 			got, err := c.Lease(context.Background())
 
-			// Verify
+			// Verify results.
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Client.Lease() error = %v, wantErr %v", err, tt.wantErr)
 				return
