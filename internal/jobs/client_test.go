@@ -163,6 +163,12 @@ func TestClient_Update_and_Complete(t *testing.T) {
 				t.Errorf("Client.Complete() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
+			if tt.wantErr {
+				return
+			}
+			if _, ok := h.jobs.Completed[tt.update]; !ok {
+				t.Errorf("Client.Complete() missing date: %s", tt.update)
+			}
 		})
 	}
 }
