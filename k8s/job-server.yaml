@@ -1,0 +1,70 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: slow
+provisioner: kubernetes.io/gce-pd
+parameters:
+  type: pd-standard
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: archiver-jobserver
+  annotations:
+    volume.beta.kubernetes.io/storage-class: "slow"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: job-server
+spec:
+  ports:
+    - port: 8083
+      targetPort: 8083
+  selector:
+    app: job-server
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: job-server
+  labels:
+    app: job-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: job-server
+  template:
+    metadata:
+      labels:
+        app: job-server
+      annotations:
+        prometheus.io/scrape: 'true'
+    spec:
+      containers:
+      - name: job-server
+        image: gcr.io/{{PROJECT_ID}}/archive-repacker:job-server-{{COMMIT_SHA}}
+        args:
+        - -addr=:8083
+        - -jobs-state=/singleton/jobs.json
+        - -timeout=1h
+        - -logx.debug=true
+        ports:
+        - containerPort: 8083
+        volumeMounts:
+        - name: singleton
+          mountPath: /singleton
+      volumes:
+      - name: singleton
+        persistentVolumeClaim:
+          # R/W access to a PVC forces a singleton instance.
+          claimName: archiver-jobserver
+      nodeSelector:
+        archiver: "true"

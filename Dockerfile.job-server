@@ -1,0 +1,16 @@
+FROM golang:1.20 as build
+ENV CGO_ENABLED=0
+WORKDIR /go/src/github.com/m-lab/archive-repacker
+COPY . .
+# Build job-server and put the git commit hash into the binary.
+RUN go get -v ./...
+RUN go install \
+      -ldflags "-X github.com/m-lab/go/prometheusx.GitShortCommit=$(git log -1 --format=%h)$(git diff --quiet || echo dirty)" \
+      ./cmd/job-server
+
+FROM alpine:3.17
+COPY --from=build /go/bin/job-server /
+WORKDIR /
+# Make sure /job-server can run (has no missing external dependencies).
+RUN /job-server -h 2> /dev/null
+ENTRYPOINT ["/job-server"]

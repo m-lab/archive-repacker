@@ -1,0 +1,42 @@
+timeout: 1800s
+
+options:
+  env:
+  - PROJECT_ID=$PROJECT_ID
+
+steps:
+- name: gcr.io/$PROJECT_ID/golang-cbif:1.20
+  id: "Run all unit tests"
+  args:
+  - go version
+  - go get -v -t ./...
+  - go test -v -race ./...
+  - go test -v ./...
+
+- name: gcr.io/cloud-builders/docker
+  id: "Build the job-server docker image"
+  args: [
+    "build",
+      "-t", "gcr.io/$PROJECT_ID/archive-repacker:job-server-${COMMIT_SHA}",
+      "-f", "Dockerfile.job-server", "."
+  ]
+
+- name: gcr.io/cloud-builders/docker
+  id: "Push the docker container to gcr.io"
+  args: [
+    "push", "gcr.io/$PROJECT_ID/archive-repacker:job-server-${COMMIT_SHA}",
+  ]
+
+- name: gcr.io/cloud-builders/kubectl
+  id: "Deploy job-server configuration"
+  entrypoint: /bin/bash
+  args:
+  - -c
+  - |-
+    sed -i -e 's/{{COMMIT_SHA}}/'${COMMIT_SHA}'/g' \
+           -e 's/{{PROJECT_ID}}/'${PROJECT_ID}'/g' \
+           k8s/job-server.yaml
+    /builder/kubectl.bash apply --recursive -f k8s/
+  env:
+  - CLOUDSDK_COMPUTE_REGION=$_CLUSTER_REGION
+  - CLOUDSDK_CONTAINER_CLUSTER=data-processing
