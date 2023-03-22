@@ -124,6 +124,9 @@ func (r *Manager[Row]) ProcessDate(ctx context.Context, date string) error {
 	return nil
 }
 
+// ProcessRow acts on a single row for the given date. Typically the row
+// represents an source archive with additional metadata needed for processing
+// every file in the archive.
 func (r *Manager[Row]) ProcessRow(ctx context.Context, date string, row Row) error {
 	// Update job server that this date is still in progress.
 	uctx, ucancel := context.WithTimeout(ctx, time.Minute)
