@@ -1,5 +1,5 @@
 FROM golang:1.20 as build
-ENV CGO_ENABLED 0
+ENV CGO_ENABLED=0
 WORKDIR /go/src/github.com/m-lab/archive-repacker
 COPY . .
 # Build job-server and put the git commit hash into the binary.
