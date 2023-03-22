@@ -11,10 +11,9 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/m-lab/go/cloud/bqfake"
-
 	"github.com/m-lab/archive-repacker/archive"
 	"github.com/m-lab/archive-repacker/internal/jobs"
+	"github.com/m-lab/go/cloud/bqfake"
 )
 
 type fakeRow struct {
