@@ -18,8 +18,8 @@ var (
 	ErrNotRegularFile = errors.New("file type is not regular")
 )
 
-// tarSource provides Next and Read functions.
-type tarSource interface {
+// tarReader provides Next and Read functions.
+type tarReader interface {
 	Next() (*tar.Header, error)
 	Read(b []byte) (int, error)
 }
@@ -33,7 +33,7 @@ type Source struct {
 	// Size is the number of bytes in the archive.
 	Size int
 	io.Closer
-	tarSource
+	tarReader
 }
 
 // NewFileSource creates a new Source for the named file.
@@ -57,11 +57,11 @@ func NewFileSource(file string) (*Source, error) {
 		return nil, err
 	}
 	// Untar the uncompressed archive.
-	tarSource := tar.NewReader(gzr)
+	tarReader := tar.NewReader(gzr)
 
 	s := &Source{
 		Path:      path,
-		tarSource: tarSource,
+		tarReader: tarReader,
 		Closer:    gzr,
 		Size:      size,
 	}
@@ -106,12 +106,12 @@ func NewGCSSource(ctx context.Context, client *storage.Client, url string) (*Sou
 		return nil, err
 	}
 	// Untar the uncompressed archive.
-	tarSource := tar.NewReader(gzr)
+	tarReader := tar.NewReader(gzr)
 
 	// Create a closer to manage complete cleanup of all resources.
 	gcs := &Source{
 		Path:      path,
-		tarSource: tarSource,
+		tarReader: tarReader,
 		Closer:    gzr,
 		Size:      size,
 	}
@@ -155,7 +155,7 @@ func (s *Source) NextFile() (*tar.Header, []byte, error) {
 	var h *tar.Header
 
 	// The tar data should be in memory, so there is no need to retry errors.
-	h, err = s.tarSource.Next()
+	h, err = s.tarReader.Next()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -166,7 +166,7 @@ func (s *Source) NextFile() (*tar.Header, []byte, error) {
 		return nil, nil, ErrNotRegularFile
 	}
 
-	data, err = io.ReadAll(s.tarSource)
+	data, err = io.ReadAll(s.tarReader)
 	if err == nil {
 		s.Count++
 	}
