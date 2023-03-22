@@ -56,7 +56,7 @@ func TestManager_ProcessDate(t *testing.T) {
 		date          string
 		query         string
 		config        bqfake.QueryConfig[fakeRow]
-		wantCount     int
+		wantOutCount  int
 		wantFileCalls int
 		forceBadCount int
 		wantErr       bool
@@ -71,7 +71,7 @@ func TestManager_ProcessDate(t *testing.T) {
 				},
 			},
 			wantFileCalls: 2,
-			wantCount:     2,
+			wantOutCount:  2,
 		},
 		{
 			name:  "success-tarfile-is-corrupt-with-one-good-file",
@@ -83,7 +83,7 @@ func TestManager_ProcessDate(t *testing.T) {
 				},
 			},
 			wantFileCalls: 1,
-			wantCount:     1,
+			wantOutCount:  1,
 		},
 		{
 			name:  "success-tarfile-contains-one-corrupt-file",
@@ -95,7 +95,7 @@ func TestManager_ProcessDate(t *testing.T) {
 				},
 			},
 			wantFileCalls: 1,
-			wantCount:     0, // no good files remain.
+			wantOutCount:  0, // no good files remain.
 		},
 		{
 			name:  "bad-query",
@@ -147,8 +147,8 @@ func TestManager_ProcessDate(t *testing.T) {
 			if tt.wantErr {
 				return
 			}
-			if tt.wantCount != p.outCount {
-				t.Errorf("Process.Finish() output count = %d, want %d", p.outCount, tt.wantCount)
+			if tt.wantOutCount != p.outCount {
+				t.Errorf("Process.Finish() output count = %d, want %d", p.outCount, tt.wantOutCount)
 			}
 			if tt.wantFileCalls != p.fileCalls {
 				t.Errorf("Process.File() calls = %d, want %d", p.fileCalls, tt.wantFileCalls)
