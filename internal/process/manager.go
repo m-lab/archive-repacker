@@ -10,12 +10,11 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/m-lab/archive-repacker/archive"
-
 	"cloud.google.com/go/bigquery"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
+	"github.com/m-lab/archive-repacker/archive"
 	"github.com/m-lab/archive-repacker/internal/jobs"
 	"github.com/m-lab/archive-repacker/query"
 )
