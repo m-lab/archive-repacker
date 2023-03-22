@@ -1,4 +1,4 @@
-package archive_test
+package process_test
 
 import (
 	"archive/tar"
@@ -13,6 +13,7 @@ import (
 
 	"github.com/m-lab/archive-repacker/archive"
 	"github.com/m-lab/archive-repacker/internal/jobs"
+	"github.com/m-lab/archive-repacker/internal/process"
 	"github.com/m-lab/go/cloud/bqfake"
 )
 
@@ -35,13 +36,13 @@ func (f *fakeProcessor) Source(ctx context.Context, row fakeRow) *archive.Reader
 }
 func (f *fakeProcessor) File(h *tar.Header, b []byte) ([]byte, error) {
 	if h.Name == "corrupt" {
-		return nil, archive.ErrCorrupt
+		return nil, process.ErrCorrupt
 	}
 	return nil, nil
 }
 func (f *fakeProcessor) Finish(ctx context.Context, out *archive.Writer) error { return nil }
 
-func TestReprocessor_ProcessDate(t *testing.T) {
+func TestManager_ProcessDate(t *testing.T) {
 	// Hide logs during tests.
 	log.SetOutput(io.Discard)
 	tests := []struct {
@@ -115,11 +116,10 @@ func TestReprocessor_ProcessDate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			client := bqfake.NewQueryReadClient[fakeRow](tt.config)
-			archive.MaxDelaySeconds = 1
-			archive.ProcessRetries = 0
+			process.MaxDelaySeconds = 1
 
 			p := &fakeProcessor{badCount: tt.badCount}
-			r := archive.Reprocessor[fakeRow]{
+			r := process.Manager[fakeRow]{
 				Process: p,
 				Client:  client,
 				Query:   tt.query,
