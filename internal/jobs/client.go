@@ -3,7 +3,7 @@ package jobs
 import (
 	"context"
 	"errors"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 )
@@ -64,7 +64,7 @@ func (c *Client) Lease(ctx context.Context) (string, error) {
 	}
 
 	defer resp.Body.Close()
-	b, err := ioutil.ReadAll(resp.Body)
+	b, err := io.ReadAll(resp.Body)
 	return string(b), err
 }
 
