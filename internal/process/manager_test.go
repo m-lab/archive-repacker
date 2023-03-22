@@ -26,8 +26,8 @@ type fakeProcessor struct {
 }
 
 func (f *fakeProcessor) Init(ctx context.Context, date string) {}
-func (f *fakeProcessor) Source(ctx context.Context, row fakeRow) *archive.Reader {
-	s, err := archive.NewFileReader(row.File)
+func (f *fakeProcessor) Source(ctx context.Context, row fakeRow) *archive.Source {
+	s, err := archive.NewFileSource(row.File)
 	if err != nil {
 		panic(err)
 	}
@@ -40,7 +40,7 @@ func (f *fakeProcessor) File(h *tar.Header, b []byte) ([]byte, error) {
 	}
 	return nil, nil
 }
-func (f *fakeProcessor) Finish(ctx context.Context, out *archive.Writer) error { return nil }
+func (f *fakeProcessor) Finish(ctx context.Context, out *archive.Target) error { return nil }
 
 func TestManager_ProcessDate(t *testing.T) {
 	// Hide logs during tests.

@@ -76,13 +76,13 @@ type Processor[Row any] interface {
 	// Init sets up the processor for processing the given date, e.g. downloading daily databases.
 	Init(ctx context.Context, date string)
 	// Create a new archive source to read archive files to process.
-	Source(ctx context.Context, row Row) *archive.Reader
+	Source(ctx context.Context, row Row) *archive.Source
 	// File processes the given file content. File should only return ErrCorrupt
 	// if the content is corrupt. If the file content cannot be processed for other
 	// reasons, then return the original data with no error.
 	File(h *tar.Header, b []byte) ([]byte, error)
 	// Finish concludes an archive after all files have been processed.
-	Finish(ctx context.Context, out *archive.Writer) error
+	Finish(ctx context.Context, out *archive.Target) error
 }
 
 // Manager uses the Processor to act on every result returned by the Querier.
@@ -135,7 +135,7 @@ func (r *Manager[Row]) ProcessRow(ctx context.Context, date string, row Row) err
 	sctx, scancel := context.WithTimeout(ctx, 20*time.Minute)
 	defer scancel()
 	src := r.Process.Source(sctx, row)
-	out := archive.NewWriter()
+	out := archive.NewTarget()
 
 	var h *tar.Header
 	var b []byte
