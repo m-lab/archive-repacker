@@ -86,7 +86,7 @@ type Processor[Row any] interface {
 }
 
 // Manager uses a Processor to act on every result returned by the Querier.
-// Manager uses a type parameter for the query result and Processor type.
+// Manager uses a type parameter for the query result rows and Processor type.
 type Manager[Row any] struct {
 	Jobs              jobs.Client
 	Process           Processor[Row]
@@ -181,8 +181,8 @@ func (r *Manager[Row]) ProcessRow(ctx context.Context, date string, row Row) err
 	return r.Process.Finish(ctx, out)
 }
 
-// runQuery runs the configured Reprocessor query for the given date then collects
-// and returns all results.
+// runQuery runs the configured Manager query for the given date then collects
+// and returns all results. Query failures will be retried up to QueryRetries times.
 func (r *Manager[Row]) runQuery(ctx context.Context, date string) ([]Row, error) {
 	qctx, qcancel := context.WithTimeout(ctx, time.Hour)
 	defer qcancel()
