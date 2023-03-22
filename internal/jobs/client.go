@@ -3,7 +3,7 @@ package jobs
 import (
 	"context"
 	"errors"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 )
@@ -64,6 +64,38 @@ func (c *Client) Lease(ctx context.Context) (string, error) {
 	}
 
 	defer resp.Body.Close()
-	b, err := ioutil.ReadAll(resp.Body)
+	b, err := io.ReadAll(resp.Body)
 	return string(b), err
+}
+
+// Update accepts a previously leased date and updates the date. Dates in
+// progress should be updated more frequently than the job-server lease timeout.
+func (c *Client) Update(ctx context.Context, date string) error {
+	l := *c.Server
+	l.Path = "/v1/update"
+	return c.request(ctx, date, l)
+}
+
+// Complete accepts a previously leased date and marks it as complete.
+func (c *Client) Complete(ctx context.Context, date string) error {
+	l := *c.Server
+	l.Path = "/v1/complete"
+	return c.request(ctx, date, l)
+}
+
+// request issues a connection to given url with a single date parameter. Any
+// non-200 response is an error.
+func (c *Client) request(ctx context.Context, date string, l url.URL) error {
+	q := l.Query()
+	q.Add("date", date)
+	l.RawQuery = q.Encode()
+	resp, err := makeRequest(ctx, c.Client, &l)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return errors.New("wrong response status: " + resp.Status)
+	}
+	return nil
 }
