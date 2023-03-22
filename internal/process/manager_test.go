@@ -22,7 +22,7 @@ type fakeRow struct {
 }
 
 type fakeProcessor struct {
-	badCount int
+	forceBadCount int
 }
 
 func (f *fakeProcessor) Init(ctx context.Context, date string) {}
@@ -31,7 +31,7 @@ func (f *fakeProcessor) Source(ctx context.Context, row fakeRow) *archive.Source
 	if err != nil {
 		panic(err)
 	}
-	s.Count += f.badCount
+	s.Count += f.forceBadCount
 	return s
 }
 func (f *fakeProcessor) File(h *tar.Header, b []byte) ([]byte, error) {
@@ -46,12 +46,12 @@ func TestManager_ProcessDate(t *testing.T) {
 	// Hide logs during tests.
 	log.SetOutput(io.Discard)
 	tests := []struct {
-		name     string
-		date     string
-		query    string
-		config   bqfake.QueryConfig[fakeRow]
-		badCount int
-		wantErr  bool
+		name          string
+		date          string
+		query         string
+		config        bqfake.QueryConfig[fakeRow]
+		forceBadCount int
+		wantErr       bool
 	}{
 		{
 			name:  "success",
@@ -101,8 +101,8 @@ func TestManager_ProcessDate(t *testing.T) {
 					Rows: []fakeRow{{File: "file://./testdata/input.tgz"}},
 				},
 			},
-			badCount: 1,
-			wantErr:  true,
+			forceBadCount: 1,
+			wantErr:       true,
 		},
 	}
 
@@ -118,7 +118,7 @@ func TestManager_ProcessDate(t *testing.T) {
 			client := bqfake.NewQueryReadClient[fakeRow](tt.config)
 			process.MaxDelaySeconds = 1
 
-			p := &fakeProcessor{badCount: tt.badCount}
+			p := &fakeProcessor{forceBadCount: tt.forceBadCount}
 			r := process.Manager[fakeRow]{
 				Process: p,
 				Client:  client,
