@@ -69,13 +69,13 @@ var (
 	)
 )
 
-// Processor interface uses a type parameter for BigQuery result row types. The
-// interface expects all jobs to be batched per date, and process every file of
-// every archive.
+// A Processor is used by the process Manager to act on the content of every
+// file of every row archive. Processor uses a type parameter for the specific query
+// row type.
 type Processor[Row any] interface {
 	// Init sets up the processor for processing the given date, e.g. downloading daily databases.
 	Init(ctx context.Context, date string)
-	// Create a new archive source to read archive files to process.
+	// Source creates a new archive source to read archive files to process.
 	Source(ctx context.Context, row Row) *archive.Source
 	// File processes the given file content. File should only return ErrCorrupt
 	// if the content is corrupt. If the file content cannot be processed for other
@@ -85,7 +85,7 @@ type Processor[Row any] interface {
 	Finish(ctx context.Context, out *archive.Target) error
 }
 
-// Manager uses the Processor to act on every result returned by the Querier.
+// Manager uses a Processor to act on every result returned by the Querier.
 // Manager uses a type parameter for the query result and Processor type.
 type Manager[Row any] struct {
 	Jobs              jobs.Client
@@ -98,7 +98,7 @@ type Manager[Row any] struct {
 
 // ProcessDate processes all archives found on a given date.
 func (r *Manager[Row]) ProcessDate(ctx context.Context, date string) error {
-	// Initialize process with current date.
+	// Initialize processor with current date.
 	r.Process.Init(ctx, date)
 
 	// Collect BigQuery results quickly, and then process in a second loop below.
