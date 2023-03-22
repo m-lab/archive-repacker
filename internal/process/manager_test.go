@@ -23,6 +23,7 @@ type fakeRow struct {
 
 type fakeProcessor struct {
 	forceBadCount int
+	outCount      int
 }
 
 func (f *fakeProcessor) Init(ctx context.Context, date string) {}
@@ -40,7 +41,10 @@ func (f *fakeProcessor) File(h *tar.Header, b []byte) ([]byte, error) {
 	}
 	return nil, nil
 }
-func (f *fakeProcessor) Finish(ctx context.Context, out *archive.Target) error { return nil }
+func (f *fakeProcessor) Finish(ctx context.Context, out *archive.Target) error {
+	f.outCount = out.Count
+	return nil
+}
 
 func TestManager_ProcessDate(t *testing.T) {
 	// Hide logs during tests.
@@ -50,6 +54,7 @@ func TestManager_ProcessDate(t *testing.T) {
 		date          string
 		query         string
 		config        bqfake.QueryConfig[fakeRow]
+		wantCount     int
 		forceBadCount int
 		wantErr       bool
 	}{
@@ -62,9 +67,10 @@ func TestManager_ProcessDate(t *testing.T) {
 					Rows: []fakeRow{{File: "file://./testdata/input.tgz"}},
 				},
 			},
+			wantCount: 1,
 		},
 		{
-			name:  "success-tarfile-is-corrupt",
+			name:  "success-tarfile-is-corrupt-with-one-good-file",
 			date:  "2023-01-01",
 			query: "SELECT 'file://./testdata/corrupt-tarfile.tgz' AS File",
 			config: bqfake.QueryConfig[fakeRow]{
@@ -72,9 +78,10 @@ func TestManager_ProcessDate(t *testing.T) {
 					Rows: []fakeRow{{File: "file://./testdata/corrupt-tarfile.tgz"}},
 				},
 			},
+			wantCount: 1,
 		},
 		{
-			name:  "success-corrupt-file-within-tarfile",
+			name:  "success-tarfile-contains-one-corrupt-file",
 			date:  "2023-01-01",
 			query: "SELECT 'file://./testdata/corrupt.tgz' AS File",
 			config: bqfake.QueryConfig[fakeRow]{
@@ -82,6 +89,7 @@ func TestManager_ProcessDate(t *testing.T) {
 					Rows: []fakeRow{{File: "file://./testdata/corrupt.tgz"}},
 				},
 			},
+			wantCount: 0, // no good files remain.
 		},
 		{
 			name:  "bad-query",
@@ -132,6 +140,12 @@ func TestManager_ProcessDate(t *testing.T) {
 			err := r.ProcessDate(ctx, tt.date)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ProcessDate() error; got %v, wantErr %t", err, tt.wantErr)
+			}
+			if tt.wantErr {
+				return
+			}
+			if tt.wantCount != p.outCount {
+				t.Errorf("Process.Finish() output count = %d, want %d", p.outCount, tt.wantCount)
 			}
 		})
 	}
