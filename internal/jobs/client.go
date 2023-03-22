@@ -93,9 +93,9 @@ func (c *Client) request(ctx context.Context, date string, l url.URL) error {
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return errors.New("wrong response status: " + resp.Status)
 	}
-	defer resp.Body.Close()
 	return nil
 }
