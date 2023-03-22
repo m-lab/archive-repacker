@@ -12,7 +12,7 @@ import (
 	"github.com/m-lab/go/testingx"
 )
 
-func TestNewFileReader(t *testing.T) {
+func TestNewFileSource(t *testing.T) {
 	tests := []struct {
 		name      string
 		file      string
@@ -42,9 +42,9 @@ func TestNewFileReader(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewFileReader(tt.file)
+			got, err := NewFileSource(tt.file)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("NewFileReader() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("NewFileSource() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if tt.wantErr {
@@ -57,20 +57,20 @@ func TestNewFileReader(t *testing.T) {
 				}
 			}
 			if got.Count != tt.wantCount {
-				t.Errorf("Reader.Count = %v, want %v", got.Count, tt.wantCount)
+				t.Errorf("Source.Count = %v, want %v", got.Count, tt.wantCount)
 			}
 			p, err := ParseArchiveURL(tt.file)
 			testingx.Must(t, err, "failed to parse input filename")
 			s, err := os.Stat(p.Filename())
 			testingx.Must(t, err, "failed to find input filename")
 			if got.Size != int(s.Size()) {
-				t.Errorf("Reader.Size = %v, want %v", got.Size, s.Size())
+				t.Errorf("Source.Size = %v, want %v", got.Size, s.Size())
 			}
 		})
 	}
 }
 
-func TestNewGCSReader(t *testing.T) {
+func TestNewGCSSource(t *testing.T) {
 	tests := []struct {
 		name      string
 		url       string
@@ -126,9 +126,9 @@ func TestNewGCSReader(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			src, err := NewGCSReader(context.Background(), client, tt.url)
+			src, err := NewGCSSource(context.Background(), client, tt.url)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("NewGCSReader() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("NewGCSSource() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if tt.wantErr {
@@ -158,7 +158,7 @@ func TestNewGCSReader(t *testing.T) {
 			attr, err := obj.Attrs(context.Background())
 			testingx.Must(t, err, "failed to read object attrs")
 			if src.Size != int(attr.Size) {
-				t.Errorf("Reader.Size = %d, want %d", src.Size, attr.Size)
+				t.Errorf("Source.Size = %d, want %d", src.Size, attr.Size)
 			}
 		})
 	}
