@@ -9,7 +9,7 @@ import (
 	"github.com/m-lab/go/testingx"
 )
 
-func TestNewWriter(t *testing.T) {
+func TestNewTarget(t *testing.T) {
 	tests := []struct {
 		name    string
 		file    string
@@ -46,9 +46,9 @@ func TestNewWriter(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var h *tar.Header
 			var b []byte
-			src, err := NewFileReader(tt.file)
+			src, err := NewFileSource(tt.file)
 			testingx.Must(t, err, "failed to open file: %s", tt.file)
-			out := NewWriter()
+			out := NewTarget()
 
 			// Copy input to output
 			for {
@@ -65,11 +65,11 @@ func TestNewWriter(t *testing.T) {
 
 			// Verify & Upload
 			if out.Count != src.Count {
-				t.Errorf("Writer.Count = %d, want %d", out.Count, src.Count)
+				t.Errorf("Target.Count = %d, want %d", out.Count, src.Count)
 			}
 			err = out.Upload(context.Background(), client, p)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("Writer.Upload() = %v, want nil", err)
+				t.Errorf("Target.Upload() = %v, want nil", err)
 			}
 			obj := client.Bucket(p.Bucket()).Object(p.Object())
 			attr, err := obj.Attrs(context.Background())
@@ -87,7 +87,7 @@ func TestNewWriter(t *testing.T) {
 	}
 }
 
-func TestWriter_AddFile(t *testing.T) {
+func TestTarget_AddFile(t *testing.T) {
 	tests := []struct {
 		name     string
 		h        *tar.Header
@@ -108,9 +108,9 @@ func TestWriter_AddFile(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			out := NewWriter()
+			out := NewTarget()
 			if err := out.AddFile(tt.h, tt.contents); (err != nil) != tt.wantErr {
-				t.Errorf("Writer.AddFile() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("Target.AddFile() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
