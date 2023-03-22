@@ -1,4 +1,4 @@
-package archive
+package process
 
 import (
 	"archive/tar"
@@ -9,6 +9,8 @@ import (
 	"log"
 	"math/rand"
 	"time"
+
+	"github.com/m-lab/archive-repacker/archive"
 
 	"cloud.google.com/go/bigquery"
 	"github.com/prometheus/client_golang/prometheus"
@@ -22,9 +24,6 @@ var (
 	// MaxDelaySeconds is the maximum number of seconds to randomly wait in
 	// response to BigQuery errors.
 	MaxDelaySeconds = 60
-	// ProcessRetries is the maximum number of times to retry processing a
-	// given row from BigQuery result.
-	ProcessRetries = 10
 	// QueryRetries is the maximum number of times to retry a query.
 	QueryRetries = 2
 	// ErrCorrupt may be returned by a processor implementation if the file
@@ -71,26 +70,25 @@ var (
 	)
 )
 
-// Processor is a generic interface for processing BigQuery result rows. The
+// Processor interface uses a type parameter for BigQuery result row types. The
 // interface expects all jobs to be batched per date, and process every file of
 // every archive.
 type Processor[Row any] interface {
 	// Init sets up the processor for processing the given date, e.g. downloading daily databases.
 	Init(ctx context.Context, date string)
 	// Create a new archive source to read archive files to process.
-	Source(ctx context.Context, row Row) *Reader
+	Source(ctx context.Context, row Row) *archive.Reader
 	// File processes the given file content. File should only return ErrCorrupt
 	// if the content is corrupt. If the file content cannot be processed for other
 	// reasons, then return the original data with no error.
 	File(h *tar.Header, b []byte) ([]byte, error)
 	// Finish concludes an archive after all files have been processed.
-	Finish(ctx context.Context, out *Writer) error
+	Finish(ctx context.Context, out *archive.Writer) error
 }
 
-// Reprocessor is a generic type that can enumerate and process all archives
-// returned in a BigQuery result Row and processed by a Processor that can act
-// on the same row type.
-type Reprocessor[Row any] struct {
+// Manager uses the Processor to act on every result returned by the Querier.
+// Manager uses a type parameter for the query result and Processor type.
+type Manager[Row any] struct {
 	Jobs              jobs.Client
 	Process           Processor[Row]
 	OutBucket         string
@@ -100,7 +98,7 @@ type Reprocessor[Row any] struct {
 }
 
 // ProcessDate processes all archives found on a given date.
-func (r *Reprocessor[Row]) ProcessDate(ctx context.Context, date string) error {
+func (r *Manager[Row]) ProcessDate(ctx context.Context, date string) error {
 	// Initialize process with current date.
 	r.Process.Init(ctx, date)
 
@@ -127,7 +125,7 @@ func (r *Reprocessor[Row]) ProcessDate(ctx context.Context, date string) error {
 	return nil
 }
 
-func (r *Reprocessor[Row]) ProcessRow(ctx context.Context, date string, row Row) error {
+func (r *Manager[Row]) ProcessRow(ctx context.Context, date string, row Row) error {
 	// Update job server that this date is still in progress.
 	uctx, ucancel := context.WithTimeout(ctx, time.Minute)
 	defer ucancel()
@@ -138,7 +136,7 @@ func (r *Reprocessor[Row]) ProcessRow(ctx context.Context, date string, row Row)
 	sctx, scancel := context.WithTimeout(ctx, 20*time.Minute)
 	defer scancel()
 	src := r.Process.Source(sctx, row)
-	out := NewWriter()
+	out := archive.NewWriter()
 
 	var h *tar.Header
 	var b []byte
@@ -161,7 +159,7 @@ func (r *Reprocessor[Row]) ProcessRow(ctx context.Context, date string, row Row)
 		}
 
 		// Add updated file content to new archive.
-		n := CopyHeader(h)
+		n := archive.CopyHeader(h)
 		n.Size = int64(len(b))
 		out.AddFile(n, b)
 	}
@@ -186,27 +184,26 @@ func (r *Reprocessor[Row]) ProcessRow(ctx context.Context, date string, row Row)
 
 // runQuery runs the configured Reprocessor query for the given date then collects
 // and returns all results.
-func (r *Reprocessor[Row]) runQuery(ctx context.Context, date string) ([]Row, error) {
+func (r *Manager[Row]) runQuery(ctx context.Context, date string) ([]Row, error) {
 	qctx, qcancel := context.WithTimeout(ctx, time.Hour)
 	defer qcancel()
 
 	var err error
 	var results []Row
 	t := time.Now()
-	err = retry(QueryRetries, func() error {
+	for trial := 0; trial < QueryRetries; trial++ {
 		param := []bigquery.QueryParameter{
 			{Name: "date", Value: date},
 		}
 		results, err = query.Run[Row](qctx, r.Client, r.Query, param)
 		if err != nil {
-			// Retry
 			repackerQueryErrors.Inc()
 			log.Println("Failed to run query (retrying after ~1m):", err)
 			time.Sleep(time.Second * time.Duration(rand.Intn(MaxDelaySeconds)))
-			return err
+			continue
 		}
-		return nil
-	})
+		break
+	}
 	if err != nil {
 		log.Println("query failed too many times:", err)
 		return nil, fmt.Errorf("query failed too many times: %v", err)
