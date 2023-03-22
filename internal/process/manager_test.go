@@ -24,6 +24,7 @@ type fakeRow struct {
 type fakeProcessor struct {
 	forceBadCount int
 	outCount      int
+	fileCalls     int
 }
 
 func (f *fakeProcessor) Init(ctx context.Context, date string) {}
@@ -36,6 +37,7 @@ func (f *fakeProcessor) Source(ctx context.Context, row fakeRow) *archive.Source
 	return s
 }
 func (f *fakeProcessor) File(h *tar.Header, b []byte) ([]byte, error) {
+	f.fileCalls++
 	if h.Name == "corrupt" {
 		return nil, process.ErrCorrupt
 	}
@@ -55,11 +57,12 @@ func TestManager_ProcessDate(t *testing.T) {
 		query         string
 		config        bqfake.QueryConfig[fakeRow]
 		wantCount     int
+		wantFileCalls int
 		forceBadCount int
 		wantErr       bool
 	}{
 		{
-			name:  "success",
+			name:  "success-two-files",
 			date:  "2023-01-01",
 			query: "SELECT 'file://./testdata/input.tgz' AS File",
 			config: bqfake.QueryConfig[fakeRow]{
@@ -67,7 +70,8 @@ func TestManager_ProcessDate(t *testing.T) {
 					Rows: []fakeRow{{File: "file://./testdata/input.tgz"}},
 				},
 			},
-			wantCount: 1,
+			wantFileCalls: 2,
+			wantCount:     2,
 		},
 		{
 			name:  "success-tarfile-is-corrupt-with-one-good-file",
@@ -78,7 +82,8 @@ func TestManager_ProcessDate(t *testing.T) {
 					Rows: []fakeRow{{File: "file://./testdata/corrupt-tarfile.tgz"}},
 				},
 			},
-			wantCount: 1,
+			wantFileCalls: 1,
+			wantCount:     1,
 		},
 		{
 			name:  "success-tarfile-contains-one-corrupt-file",
@@ -89,7 +94,8 @@ func TestManager_ProcessDate(t *testing.T) {
 					Rows: []fakeRow{{File: "file://./testdata/corrupt.tgz"}},
 				},
 			},
-			wantCount: 0, // no good files remain.
+			wantFileCalls: 1,
+			wantCount:     0, // no good files remain.
 		},
 		{
 			name:  "bad-query",
@@ -128,13 +134,10 @@ func TestManager_ProcessDate(t *testing.T) {
 
 			p := &fakeProcessor{forceBadCount: tt.forceBadCount}
 			r := process.Manager[fakeRow]{
-				Process: p,
-				Client:  client,
-				Query:   tt.query,
-				Jobs: jobs.Client{
-					Server: u,
-					Client: http.DefaultClient,
-				},
+				Process:     p,
+				QueryClient: client,
+				Query:       tt.query,
+				Jobs:        jobs.NewClient(u, http.DefaultClient),
 			}
 			ctx := context.Background()
 			err := r.ProcessDate(ctx, tt.date)
@@ -146,6 +149,9 @@ func TestManager_ProcessDate(t *testing.T) {
 			}
 			if tt.wantCount != p.outCount {
 				t.Errorf("Process.Finish() output count = %d, want %d", p.outCount, tt.wantCount)
+			}
+			if tt.wantFileCalls != p.fileCalls {
+				t.Errorf("Process.File() calls = %d, want %d", p.fileCalls, tt.wantFileCalls)
 			}
 		})
 	}

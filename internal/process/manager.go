@@ -88,10 +88,10 @@ type Processor[Row any] interface {
 // Manager uses a Processor to act on every result returned by the Querier.
 // Manager uses a type parameter for the query result rows and Processor type.
 type Manager[Row any] struct {
-	Jobs              jobs.Client
+	Jobs              *jobs.Client
 	Process           Processor[Row]
 	OutBucket         string
-	Client            query.Querier
+	QueryClient       query.Querier
 	Query             string
 	RetryQueryOnError bool
 }
@@ -194,7 +194,7 @@ func (r *Manager[Row]) runQuery(ctx context.Context, date string) ([]Row, error)
 		param := []bigquery.QueryParameter{
 			{Name: "date", Value: date},
 		}
-		results, err = query.Run[Row](qctx, r.Client, r.Query, param)
+		results, err = query.Run[Row](qctx, r.QueryClient, r.Query, param)
 		if err != nil {
 			repackerQueryErrors.Inc()
 			log.Println("Failed to run query (retrying after ~1m):", err)
