@@ -11,9 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/m-lab/archive-repacker/internal/process"
-
 	"github.com/m-lab/archive-repacker/archive"
+	"github.com/m-lab/archive-repacker/internal/process"
 	"github.com/m-lab/archive-repacker/routeview"
 	"github.com/m-lab/go/content"
 	"github.com/m-lab/go/logx"
