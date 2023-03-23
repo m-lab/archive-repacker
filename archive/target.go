@@ -83,8 +83,6 @@ func (ar *Target) Upload(ctx context.Context, client *storage.Client, p *Path) e
 	ar.Close()
 	err := retry(1, func() error {
 		writer := p.Writer(sctx, client)
-		defer writer.Close()
-
 		contents := ar.bytes.Bytes()
 		for total := 0; total < len(contents); {
 			n, err := writer.Write(contents[total:])
@@ -94,10 +92,10 @@ func (ar *Target) Upload(ctx context.Context, client *storage.Client, p *Path) e
 			total += n
 		}
 		repackerArchiveUploads.Inc()
-		return nil
+		return writer.Close()
 	})
 	if err != nil {
-		return fmt.Errorf("closing writer for %q failed: %w", p.String(), err)
+		return fmt.Errorf("uploading %q failed: %w", p.String(), err)
 	}
 	return nil
 }
