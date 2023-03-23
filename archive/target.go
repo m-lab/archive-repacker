@@ -80,19 +80,22 @@ func (ar *Target) Upload(ctx context.Context, client *storage.Client, p *Path) e
 	sctx, cancel := context.WithTimeout(ctx, 20*time.Minute)
 	defer cancel()
 
-	writer := p.Writer(sctx, client)
 	ar.Close()
+	err := retry(1, func() error {
+		writer := p.Writer(sctx, client)
+		defer writer.Close()
 
-	contents := ar.bytes.Bytes()
-	for total := 0; total < len(contents); {
-		n, err := writer.Write(contents[total:])
-		if err != nil {
-			return fmt.Errorf("writing content to %q failed: %w", p.String(), err)
+		contents := ar.bytes.Bytes()
+		for total := 0; total < len(contents); {
+			n, err := writer.Write(contents[total:])
+			if err != nil {
+				return fmt.Errorf("writing content to %q failed: %w", p.String(), err)
+			}
+			total += n
 		}
-		total += n
-	}
-	repackerArchiveUploads.Inc()
-	err := writer.Close()
+		repackerArchiveUploads.Inc()
+		return nil
+	})
 	if err != nil {
 		return fmt.Errorf("closing writer for %q failed: %w", p.String(), err)
 	}
