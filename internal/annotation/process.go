@@ -4,13 +4,14 @@ import (
 	"archive/tar"
 	"context"
 	"encoding/json"
-	"errors"
 	"io"
 	"log"
 	"net"
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/m-lab/archive-repacker/internal/process"
 
 	"github.com/m-lab/archive-repacker/archive"
 	"github.com/m-lab/archive-repacker/routeview"
@@ -46,10 +47,6 @@ var (
 		},
 		[]string{"status"},
 	)
-)
-
-var (
-	ErrCorrupt = errors.New("corrupt file")
 )
 
 // Processor maintains state for reprocessing annotation archives.
@@ -142,7 +139,7 @@ func (p *Processor) Source(ctx context.Context, row Result) *archive.Source {
 }
 
 // File processes the given file header and file contents. File returns the new
-// file content or archive.ErrCorrupt.
+// file content or process.ErrCorrupt.
 func (p *Processor) File(h *tar.Header, b []byte) ([]byte, error) {
 	// Parse annotation.
 	an := annotator.Annotations{}
@@ -152,8 +149,7 @@ func (p *Processor) File(h *tar.Header, b []byte) ([]byte, error) {
 		delete(p.files, h.Name)
 		repackerQueryFilesCorrupt.Inc()
 		// Since file is corrupt, do not add to output.
-		// TODO(soltesz): update with process.ErrCorrupt
-		return nil, ErrCorrupt
+		return nil, process.ErrCorrupt
 	}
 
 	// Lookup IP for replacement network annotation.
