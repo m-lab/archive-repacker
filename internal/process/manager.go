@@ -138,6 +138,7 @@ func (r *Manager[Row]) ProcessRow(ctx context.Context, date string, row Row) err
 	sctx, scancel := context.WithTimeout(ctx, 20*time.Minute)
 	defer scancel()
 	src := r.Process.Source(sctx, row)
+	defer src.Close()
 	out := archive.NewTarget()
 
 	var h *tar.Header
@@ -168,7 +169,7 @@ func (r *Manager[Row]) ProcessRow(ctx context.Context, date string, row Row) err
 
 	// Verify that input and output file counts match.
 	if src.Count-corrupt != out.Count {
-		log.Printf("COUNTS DO NOT MACHT: corrupt:%d, in:%d, out:%d, %s",
+		log.Printf("COUNTS DO NOT MATCH: corrupt:%d, in:%d, out:%d, %s",
 			corrupt, src.Count, out.Count, src.Path.String())
 		return errors.New("archive count mismatch")
 	}
@@ -180,7 +181,6 @@ func (r *Manager[Row]) ProcessRow(ctx context.Context, date string, row Row) err
 
 	// All files from the source were processed and added back to the output
 	// archive. Finish archive processing, e.g. upload to alternate bucket.
-	src.Close()
 	return r.Process.Finish(ctx, out)
 }
 
@@ -200,7 +200,7 @@ func (r *Manager[Row]) runQuery(ctx context.Context, date string) ([]Row, error)
 		results, err = query.Run[Row](qctx, r.QueryClient, r.Query, param)
 		if err != nil {
 			repackerQueryErrors.Inc()
-			log.Println("Failed to run query (retrying after ~1m):", err)
+			log.Printf("Failed to run query (retrying after ~%d sec): %v", MaxDelaySeconds, err)
 			time.Sleep(time.Second * time.Duration(rand.Intn(MaxDelaySeconds)))
 			continue
 		}
