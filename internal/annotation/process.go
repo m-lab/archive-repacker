@@ -103,12 +103,12 @@ func (g *gcsProvider) Get(ctx context.Context) ([]byte, error) {
 func (p *Processor) Init(ctx context.Context, date string) {
 	// Download ipv4 routeview data for given date.
 	u, err := routeview.NewURLGenerator(p.client, p.rv4.String()).Next(ctx, date)
-	rtx.Must(err, "Could generate routeview v4 URL")
+	rtx.Must(err, "Could not generate routeview v4 URL")
 	p4 := &gcsProvider{Path: &archive.Path{URL: u}, Client: p.client}
 
 	// Download ipv6 routeview data for given date.
 	u, err = routeview.NewURLGenerator(p.client, p.rv6.String()).Next(ctx, date)
-	rtx.Must(err, "Could generate routeview v6 URL")
+	rtx.Must(err, "Could not generate routeview v6 URL")
 	p6 := &gcsProvider{Path: &archive.Path{URL: u}, Client: p.client}
 
 	// Load asnames.
@@ -186,8 +186,7 @@ func (p *Processor) File(h *tar.Header, b []byte) ([]byte, error) {
 func (p *Processor) Finish(ctx context.Context, out *archive.Target) error {
 	if len(p.files) != 0 {
 		log.Println("FILES FROM QUERY NOT UPDATED IN ARCHIVE:", len(p.files), p.src.Path.String())
-		pretty.Print(p.files)
-		log.Println("")
+		log.Println(pretty.Sprint(p.files))
 	}
 	uctx, ucancel := context.WithTimeout(ctx, 10*time.Minute)
 	defer ucancel()
