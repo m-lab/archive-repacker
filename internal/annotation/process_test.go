@@ -77,7 +77,6 @@ func TestProcessor_Source(t *testing.T) {
 		files map[string]string
 		want  *archive.Path
 	}{
-		// TODO: Add test cases.
 		{
 			name: "success",
 			row: Result{
