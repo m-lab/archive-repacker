@@ -69,7 +69,7 @@ func TestNewTarget(t *testing.T) {
 			}
 			err = out.Upload(context.Background(), client, p)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("Target.Upload() = %v, want nil", err)
+				t.Errorf("Target.Upload() = %v, want %t", err, tt.wantErr)
 			}
 			obj := client.Bucket(p.Bucket()).Object(p.Object())
 			attr, err := obj.Attrs(context.Background())
