@@ -1,0 +1,73 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: init-job-server
+spec:
+  template:
+    metadata:
+      name: init-job-server
+    spec:
+      containers:
+      - name: busybox
+        image: busybox
+        args:
+        - wget
+        # Init a single date for testing.
+        - http://$(JOB_SERVER_PORT_8083_TCP_ADDR):$(JOB_SERVER_PORT_8083_TCP_PORT)/v1/init?start=2023-02-10&end=2023-02-11
+        # TODO(soltesz): initialize complete time range for production deployment.
+        # - http://$(JOB_SERVER_PORT_8083_TCP_ADDR):$(JOB_SERVER_PORT_8083_TCP_PORT)/v1/init?start=2020-03-10&end=2023-02-11
+      restartPolicy: Never
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: reannotator
+spec:
+  parallelism: 32
+  backoffLimit: 256
+  template:
+    metadata:
+      name: reannotator
+      labels:
+        app: reannotator
+      annotations:
+        prometheus.io/scrape: 'true'
+    spec:
+      initContainers:
+      - name: wait-briefly
+        image: busybox
+        command: ["sh", "-c", "sleep 30"]
+      containers:
+      - name: reannotator
+        image: gcr.io/{{PROJECT_ID}}/archive-repacker:reannotator-{{COMMIT_SHA}}
+        args:
+        - -jobservice.url=http://$(JOB_SERVER_PORT_8083_TCP_ADDR):$(JOB_SERVER_PORT_8083_TCP_PORT)
+        - -project={{PROJECT_ID}}
+        - -routeview-v4.url=gs://downloader-{{PROJECT_ID}}/RouteViewIPv4/
+        - -routeview-v6.url=gs://downloader-{{PROJECT_ID}}/RouteViewIPv6/
+        - -asname.url=file:/data/asnames.ipinfo.csv
+        - -query=/config/reannotator-query.sql
+        - -output=annotation2-output-{{PROJECT_ID}}
+        - -prometheusx.listen-address=:9990
+        ports:
+        - containerPort: 9990
+
+        volumeMounts:
+        - name: reannotator-volume
+          mountPath: /config
+        resources:
+          requests:
+            cpu: "1"
+            memory: "4500Mi"
+
+      volumes:
+      - name: reannotator-volume
+        configMap:
+          name: reannotator-config
+
+      nodeSelector:
+        archiver: "true"
+
+      # Setting policy to "Never" leaves the failed job in k8s so the logs
+      # remain accessible.
+      restartPolicy: Never
