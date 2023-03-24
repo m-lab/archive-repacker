@@ -90,7 +90,6 @@ type Processor[Row any] interface {
 type Manager[Row any] struct {
 	Jobs              *jobs.Client
 	Process           Processor[Row]
-	OutBucket         string
 	QueryClient       query.Querier
 	Query             string
 	RetryQueryOnError bool

@@ -1,0 +1,20 @@
+FROM golang:1.20 as build
+ENV CGO_ENABLED 0
+WORKDIR /go/src/github.com/m-lab/archive-repacker
+COPY . .
+# Build reannotator and put the git commit hash into the binary.
+RUN go get -v ./...
+RUN go install \
+      -ldflags "-X github.com/m-lab/go/prometheusx.GitShortCommit=$(git log -1 --format=%h)$(git diff --quiet || echo dirty)" \
+      ./cmd/reannotator
+
+FROM alpine:3.17
+# By default, alpine has no root certs. Add them so pusher can use PKI to
+# verify that Google Cloud Storage is actually Google Cloud Storage.
+RUN apk add --no-cache ca-certificates
+COPY --from=build /go/bin/reannotator /
+COPY --from=measurementlab/uuid-annotator:latest /data/asnames.ipinfo.csv /data/asnames.ipinfo.csv
+WORKDIR /
+# Make sure /reannotator can run (has no missing external dependencies).
+RUN /reannotator -h 2> /dev/null
+ENTRYPOINT ["/reannotator"]

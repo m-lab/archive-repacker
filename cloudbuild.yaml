@@ -22,15 +22,30 @@ steps:
   ]
 
 - name: gcr.io/cloud-builders/docker
-  id: "Push the docker container to gcr.io"
+  id: "Push the job-server docker image to gcr.io"
   args: [
     "push", "gcr.io/$PROJECT_ID/archive-repacker:job-server-${COMMIT_SHA}",
+  ]
+
+- name: gcr.io/cloud-builders/docker
+  id: "Build the reannotator docker image"
+  args: [
+    "build",
+      "-t", "gcr.io/$PROJECT_ID/archive-repacker:reannotator-${COMMIT_SHA}",
+      "-f", "Dockerfile.reannotator", "."
+  ]
+
+- name: gcr.io/cloud-builders/docker
+  id: "Push the reannotator docker image to gcr.io"
+  args: [
+    "push", "gcr.io/$PROJECT_ID/archive-repacker:reannotator-${COMMIT_SHA}",
   ]
 
 - name: gcr.io/cloud-builders/kubectl
   id: "Deploy job-server configuration"
   entrypoint: /bin/bash
   args:
+  # TODO(soltesz): add configuration for reannotator & deployments.
   - -c
   - |-
     sed -i -e 's/{{COMMIT_SHA}}/'${COMMIT_SHA}'/g' \
