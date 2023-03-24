@@ -292,7 +292,7 @@ func TestProcessor_Finish(t *testing.T) {
 			src2, err := archive.NewGCSSource(ctx, client, tt.wantURL)
 			testingx.Must(t, err, "failed to load gcs source: %s", tt.wantURL)
 			if src2.Size != src.Size {
-				t.Errorf("Finish() size = %d, want %d", src2.Size, src.Size)
+				t.Errorf("Processor.Finish() size = %d, want %d", src2.Size, src.Size)
 			}
 		})
 	}
