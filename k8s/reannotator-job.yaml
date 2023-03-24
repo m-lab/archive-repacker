@@ -1,0 +1,48 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: archive-repacker
+spec:
+  parallelism: 32
+  backoffLimit: 128
+  template:
+    metadata:
+      name: archive-repacker
+      labels:
+        app: archive-repacker
+      annotations:
+        prometheus.io/scrape: 'true'
+    spec:
+      containers:
+      - name: archive-repacker
+        image: soltesz/archive-repacker:v0.0.25
+        args:
+        - -jobservice.url=http://$(JOB_SERVER_PORT_8083_TCP_ADDR):$(JOB_SERVER_PORT_8083_TCP_PORT)
+        - -project=mlab-sandbox
+        - -routeview-v4.url=gs://downloader-mlab-sandbox/RouteViewIPv4/
+        - -routeview-v6.url=gs://downloader-mlab-sandbox/RouteViewIPv6/
+        - -asname.url=file:/data/asnames.ipinfo.csv
+        - -query=/config/query.sql
+        - -prometheusx.listen-address=:9990
+        - -bq-delay=100us
+        ports:
+        - containerPort: 9990
+
+        volumeMounts:
+        - name: archive-volume
+          mountPath: /config
+        resources:
+          requests:
+            cpu: "1"
+            memory: "4500Mi"
+
+      volumes:
+      - name: archive-volume
+        configMap:
+          name: archive-config
+
+      nodeSelector:
+        archiver: "true"
+
+      #restartPolicy: OnFailure
+      restartPolicy: Never
