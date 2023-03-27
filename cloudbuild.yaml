@@ -45,13 +45,31 @@ steps:
   id: "Deploy job-server configuration"
   entrypoint: /bin/bash
   args:
-  # TODO(soltesz): add configuration for reannotator & deployments.
   - -c
   - |-
     sed -i -e 's/{{COMMIT_SHA}}/'${COMMIT_SHA}'/g' \
            -e 's/{{PROJECT_ID}}/'${PROJECT_ID}'/g' \
            k8s/job-server.yaml
-    /builder/kubectl.bash apply --recursive -f k8s/
+    /builder/kubectl.bash apply -f k8s/job-server.yaml
+  env:
+  - CLOUDSDK_COMPUTE_REGION=$_CLUSTER_REGION
+  - CLOUDSDK_CONTAINER_CLUSTER=data-processing
+
+- name: gcr.io/cloud-builders/kubectl
+  id: "Deploy reannotator configuration"
+  entrypoint: /bin/bash
+  args:
+  - -c
+  - |-
+    sed -i -e 's/{{COMMIT_SHA}}/'${COMMIT_SHA}'/g' \
+           -e 's/{{PROJECT_ID}}/'${PROJECT_ID}'/g' \
+           k8s/reannotator.yaml
+
+    /builder/kubectl.bash create configmap reannotator-config \
+        --from-file=k8s/reannotator-query.sql --dry-run -o yaml | \
+        /builder/kubectl.bash apply -f -
+
+    /builder/kubectl.bash apply -f k8s/reannotator.yaml
   env:
   - CLOUDSDK_COMPUTE_REGION=$_CLUSTER_REGION
   - CLOUDSDK_CONTAINER_CLUSTER=data-processing
