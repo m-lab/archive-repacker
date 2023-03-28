@@ -109,7 +109,6 @@ func main() {
 }
 
 func processDate(r *process.Copier, date string) {
-
 	d, err := time.Parse(timex.YYYYMMDDWithDash, date)
 	rtx.Must(err, "failed to parse job date")
 
