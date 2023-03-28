@@ -8,7 +8,6 @@ import (
 	"log"
 	"net"
 	"net/url"
-	"strings"
 	"time"
 
 	"github.com/m-lab/archive-repacker/archive"
@@ -190,9 +189,5 @@ func (p *Processor) Finish(ctx context.Context, out *archive.Target) error {
 	uctx, ucancel := context.WithTimeout(ctx, 10*time.Minute)
 	defer ucancel()
 	o := p.src.Path.Dup(p.outBucket)
-	// Example annotation object path:
-	// * ndt/annotation/2023/03/01/20230302T031500.576788Z-annotation-mlab1-chs0t-ndt.tgz
-	o.Path = strings.ReplaceAll(o.Path, "annotation-", "annotation2-")
-	o.Path = strings.ReplaceAll(o.Path, "annotation/", "annotation2/")
 	return out.Upload(uctx, p.client, o)
 }

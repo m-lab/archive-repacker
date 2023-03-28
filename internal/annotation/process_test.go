@@ -242,7 +242,7 @@ func TestProcessor_Finish(t *testing.T) {
 			},
 			outBucket: "fake-target-bucket",
 			fromURL:   "gs://fake-source-bucket/ndt/annotation/2023/03/01/20230302T031500.576788Z-annotation-mlab1-chs0t-ndt.tgz",
-			wantURL:   "gs://fake-target-bucket/ndt/annotation2/2023/03/01/20230302T031500.576788Z-annotation2-mlab1-chs0t-ndt.tgz",
+			wantURL:   "gs://fake-target-bucket/ndt/annotation/2023/03/01/20230302T031500.576788Z-annotation-mlab1-chs0t-ndt.tgz",
 		},
 	}
 
