@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/m-lab/archive-repacker/archive"
-
 	"github.com/fsouza/fake-gcs-server/fakestorage"
+
+	"github.com/m-lab/archive-repacker/archive"
 	"github.com/m-lab/go/testingx"
 )
 
@@ -46,9 +46,6 @@ func TestRenamer_List(t *testing.T) {
 			wantErr: true,
 		},
 	}
-
-	// * src: gs:/bucket1/ndt/annotation/2023/03/01/20230302T031500.576788Z-annotation-mlab1-chs0t-ndt.tgz
-	// * dst: gs:/bucket2/ndt/annotation2/2023/03/01/20230302T031500.576788Z-annotation2-mlab1-chs0t-ndt.tgz
 	objs := []fakestorage.Object{
 		{
 			ObjectAttrs: fakestorage.ObjectAttrs{
@@ -75,12 +72,7 @@ func TestRenamer_List(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := &Renamer{
-				client:       client,
-				bucket:       tt.bucket,
-				fromDatatype: tt.fromDatatype,
-				newDatatype:  tt.newDatatype,
-			}
+			r := NewRenamer(client, tt.bucket, tt.fromDatatype, tt.newDatatype)
 			got, err := r.List(context.Background(), tt.date)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Renamer.List() error = %v, wantErr %v", err, tt.wantErr)
@@ -90,7 +82,7 @@ func TestRenamer_List(t *testing.T) {
 				return
 			}
 
-			// Return order is not guaranteed; sort so comparison is fair.
+			// Return order is not guaranteed; sort for comparison.
 			sort.Strings(got)
 			sort.Strings(tt.want)
 			if !reflect.DeepEqual(got, tt.want) {
@@ -160,9 +152,8 @@ func TestRenamer_Rename(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
 			r := NewRenamer(client, tt.bucket, tt.fromDatatype, tt.newDatatype)
-			got, err := r.Rename(ctx, tt.url)
+			got, err := r.Rename(context.Background(), tt.url)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Renamer.Rename() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -173,19 +164,20 @@ func TestRenamer_Rename(t *testing.T) {
 			if tt.wantErr {
 				return
 			}
+
+			// Verify output objects are in GCS.
 			s, err := archive.ParseArchiveURL(tt.url)
 			testingx.Must(t, err, "failed to parse archive url: %s", tt.url)
 			d, err := archive.ParseArchiveURL(got)
 			testingx.Must(t, err, "failed to parse output url: %s", got)
-			// Verify output objects are in GCS.
+			// Src attrs.
 			src := client.Bucket(s.Bucket()).Object(s.Object())
 			srcattr, err := src.Attrs(context.Background())
 			testingx.Must(t, err, "failed to read attrs")
-
+			// Dst attrs.
 			dst := client.Bucket(d.Bucket()).Object(d.Object())
 			dstattr, err := dst.Attrs(context.Background())
 			testingx.Must(t, err, "failed to read attrs")
-
 			if srcattr.Size != dstattr.Size {
 				t.Errorf("Renamer.Rename() wrong object size; got %d, want %d", dstattr.Size, srcattr.Size)
 			}
