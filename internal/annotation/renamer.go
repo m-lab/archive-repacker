@@ -39,14 +39,14 @@ func (r *Renamer) List(ctx context.Context, date string) ([]string, error) {
 		return nil, err
 	}
 	prefix := fmt.Sprintf("ndt/%s/%04d/%02d/%02d", r.fromDatatype, d.Year, d.Month, d.Day)
-	var results []string
 	log.Printf("Listing files under: gs://%s/%s", r.bucket, prefix)
-	bucket := storagex.NewBucket(r.client.Bucket(r.bucket))
 
 	// Individual days should only have 10-20k files.
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Minute)
 	defer cancel()
 
+	var results []string
+	bucket := storagex.NewBucket(r.client.Bucket(r.bucket))
 	for trial := 0; trial < 2; trial++ {
 		results = []string{}
 		err = bucket.Walk(ctx, prefix+"/", func(o *storagex.Object) error {
@@ -59,6 +59,9 @@ func (r *Renamer) List(ctx context.Context, date string) ([]string, error) {
 			continue
 		}
 		break
+	}
+	if err != nil {
+		return nil, err
 	}
 	log.Printf("List found %d files for %q", len(results), prefix)
 	return results, err
