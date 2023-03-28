@@ -7,14 +7,19 @@ RUN go get -v ./...
 RUN go install \
       -ldflags "-X github.com/m-lab/go/prometheusx.GitShortCommit=$(git log -1 --format=%h)$(git diff --quiet || echo dirty)" \
       ./cmd/reannotator
+RUN go install \
+      -ldflags "-X github.com/m-lab/go/prometheusx.GitShortCommit=$(git log -1 --format=%h)$(git diff --quiet || echo dirty)" \
+      ./cmd/renamer
 
 FROM alpine:3.17
 # By default, alpine has no root certs. Add them so pusher can use PKI to
 # verify that Google Cloud Storage is actually Google Cloud Storage.
 RUN apk add --no-cache ca-certificates
 COPY --from=build /go/bin/reannotator /
+COPY --from=build /go/bin/renamer /
 COPY --from=measurementlab/uuid-annotator:latest /data/asnames.ipinfo.csv /data/asnames.ipinfo.csv
 WORKDIR /
 # Make sure /reannotator can run (has no missing external dependencies).
 RUN /reannotator -h 2> /dev/null
+RUN /renamer -h 2> /dev/null
 ENTRYPOINT ["/reannotator"]
