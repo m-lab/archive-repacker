@@ -72,7 +72,7 @@ func TestRenamer_List(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := NewRenamer(client, tt.bucket, tt.fromDatatype, tt.newDatatype)
+			r := NewRenamer(client, tt.bucket, "ndt", tt.fromDatatype, tt.newDatatype)
 			got, err := r.List(context.Background(), tt.date)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Renamer.List() error = %v, wantErr %v", err, tt.wantErr)
@@ -152,7 +152,7 @@ func TestRenamer_Rename(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := NewRenamer(client, tt.bucket, tt.fromDatatype, tt.newDatatype)
+			r := NewRenamer(client, tt.bucket, "ndt", tt.fromDatatype, tt.newDatatype)
 			got, err := r.Rename(context.Background(), tt.url)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Renamer.Rename() error = %v, wantErr %v", err, tt.wantErr)

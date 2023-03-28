@@ -18,15 +18,17 @@ import (
 type Renamer struct {
 	client       *storage.Client
 	bucket       string
+	experiment   string
 	fromDatatype string
 	newDatatype  string
 }
 
 // NewRenamer creates a new Renamer. Objects are listed from bucket and written to bucket.
-func NewRenamer(client *storage.Client, bucket, fromDatatype, newDatatype string) *Renamer {
+func NewRenamer(client *storage.Client, bucket, experiment, fromDatatype, newDatatype string) *Renamer {
 	return &Renamer{
 		client:       client,
 		bucket:       bucket,
+		experiment:   experiment,
 		fromDatatype: fromDatatype,
 		newDatatype:  newDatatype,
 	}
@@ -38,7 +40,7 @@ func (r *Renamer) List(ctx context.Context, date string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	prefix := fmt.Sprintf("ndt/%s/%04d/%02d/%02d", r.fromDatatype, d.Year, d.Month, d.Day)
+	prefix := fmt.Sprintf("%s/%s/%04d/%02d/%02d", r.experiment, r.fromDatatype, d.Year, d.Month, d.Day)
 	log.Printf("Listing files under: gs://%s/%s", r.bucket, prefix)
 
 	// Individual days should only have 10-20k files.
