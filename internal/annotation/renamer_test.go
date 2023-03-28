@@ -119,6 +119,14 @@ func TestRenamer_Rename(t *testing.T) {
 			want:         "gs://fake-bucket/ndt/hopannotation2/2023/03/01/20230302T031500.123450Z-hopannotation2-mlab2-chs0t-ndt.tgz",
 		},
 		{
+			name:         "success-noop",
+			bucket:       "fake-bucket",
+			fromDatatype: "hopannotation2",
+			newDatatype:  "hopannotation2",
+			url:          "gs://fake-bucket/ndt/hopannotation2/2023/03/01/20230302T031500.123450Z-hopannotation2-mlab2-chs0t-ndt.tgz",
+			want:         "gs://fake-bucket/ndt/hopannotation2/2023/03/01/20230302T031500.123450Z-hopannotation2-mlab2-chs0t-ndt.tgz",
+		},
+		{
 			name:    "error-bad-url",
 			url:     "-this-is:-invalid-url",
 			wantErr: true,

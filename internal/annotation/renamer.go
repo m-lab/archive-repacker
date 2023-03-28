@@ -88,6 +88,11 @@ func (r *Renamer) Rename(ctx context.Context, url string) (string, error) {
 	dst.Path = strings.ReplaceAll(dst.Path, r.fromDatatype+"-", r.newDatatype+"-")
 	dst.Path = strings.ReplaceAll(dst.Path, r.fromDatatype+"/", r.newDatatype+"/")
 
+	// Paths are identical, so there is nothing to rename.
+	if src.String() == dst.String() {
+		return dst.String(), nil
+	}
+
 	// Individual files (under ~50MB) should not take longer than an hour.
 	ctx, cancel := context.WithTimeout(ctx, time.Hour)
 	defer cancel()
