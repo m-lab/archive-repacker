@@ -69,6 +69,9 @@ steps:
         --from-file=k8s/reannotator-query.sql --dry-run -o yaml | \
         /builder/kubectl.bash apply -f -
 
+    # Jobs cannot be applied before removing the old one.
+    /builder/kubectl.bash delete job init-job-server
+    /builder/kubectl.bash delete job reannotator
     /builder/kubectl.bash apply -f k8s/reannotator.yaml
   env:
   - CLOUDSDK_COMPUTE_REGION=$_CLUSTER_REGION
