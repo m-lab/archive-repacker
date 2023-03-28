@@ -7,19 +7,24 @@ import (
 	"net/http"
 	"time"
 
+	"cloud.google.com/go/storage"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"google.golang.org/api/option"
+
+	"github.com/m-lab/archive-repacker/internal/annotation"
 	"github.com/m-lab/archive-repacker/internal/jobs"
 	"github.com/m-lab/archive-repacker/internal/process"
 	"github.com/m-lab/go/flagx"
 	"github.com/m-lab/go/prometheusx"
 	"github.com/m-lab/go/rtx"
 	"github.com/m-lab/go/timex"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
 var (
 	jobservice   = flagx.URL{}
 	outBucket    string
+	experiment   string
 	fromDatatype string
 	newDatatype  string
 	oneDate      string
@@ -57,6 +62,7 @@ var (
 func init() {
 	flag.Var(&jobservice, "jobservice.url", "The URL for the job service providing dates to process.")
 	flag.StringVar(&outBucket, "output", "annotation2-output-mlab-sandbox", "Write generated archives to this GCS Bucket.")
+	flag.StringVar(&experiment, "experiment", "ndt", "Name of experiment.")
 	flag.StringVar(&fromDatatype, "from-datatype", "annotation", "Name of original datatype to read in.")
 	flag.StringVar(&newDatatype, "new-datatype", "annotation2", "Name of new datatype to write out.")
 	flag.StringVar(&oneDate, "date", "", "If provided, process only this single date.")
@@ -69,11 +75,11 @@ func main() {
 	rtx.Must(flagx.ArgsFromEnv(flag.CommandLine), "Could not get args from env")
 
 	prometheusx.MustServeMetrics()
-	//sclient, err := storage.NewClient(mainCtx, option.WithScopes(storage.ScopeReadWrite))
-	//rtx.Must(err, "failed to create new read/write storage client")
-	// p := annotation.NewRenamer(sclient, outBucket, fromDatatype, newDatatype)
+	sclient, err := storage.NewClient(mainCtx, option.WithScopes(storage.ScopeReadWrite))
+	rtx.Must(err, "failed to create new read/write storage client")
+	p := annotation.NewRenamer(sclient, outBucket, experiment, fromDatatype, newDatatype)
 	r := &process.Copier{
-		Process: nil,
+		Process: p,
 	}
 	if oneDate != "" {
 		processDate(r, oneDate)
