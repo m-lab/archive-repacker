@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/m-lab/archive-repacker/internal/jobs"
+	"github.com/m-lab/go/testingx"
 )
 
 type fakeRenamer struct {
@@ -70,7 +71,8 @@ func TestCopier_ProcessDate(t *testing.T) {
 		rw.WriteHeader(http.StatusOK)
 	}))
 	s := httptest.NewServer(mux)
-	u, _ := url.Parse(s.URL)
+	u, err := url.Parse(s.URL)
+	testingx.Must(t, err, "failed to parse server url")
 	js := jobs.NewClient(u, http.DefaultClient)
 
 	for _, tt := range tests {
