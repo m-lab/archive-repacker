@@ -93,6 +93,8 @@ func main() {
 		switch err {
 		case jobs.ErrEmpty:
 			log.Println("Work queue empty; exiting")
+			// Wait a minute before exiting so prometheus can scrape metrics before exit.
+			time.Sleep(time.Minute)
 			return
 		case jobs.ErrWait:
 			log.Println("Work queue pending; waiting for 1m")
