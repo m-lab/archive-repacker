@@ -47,8 +47,8 @@ spec:
 
         resources:
           requests:
-            cpu: "1"
-            memory: "4500Mi"
+            cpu: "100m"
+            memory: "200Mi"
 
       nodeSelector:
         archiver: "true"
