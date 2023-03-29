@@ -77,20 +77,19 @@ steps:
   - CLOUDSDK_COMPUTE_REGION=$_CLUSTER_REGION
   - CLOUDSDK_CONTAINER_CLUSTER=data-processing
 
-#- name: gcr.io/cloud-builders/kubectl
-#  id: "Deploy renamer configuration"
-#  entrypoint: /bin/bash
-#  args:
-#  - -c
-#  - |-
-#    sed -i -e 's/{{COMMIT_SHA}}/'${COMMIT_SHA}'/g' \
-#           -e 's/{{PROJECT_ID}}/'${PROJECT_ID}'/g' \
-#           k8s/renamer.yaml
-#
-#    # Enable after reannotator has completed.
-#    /builder/kubectl.bash delete job init-job-server
-#    /builder/kubectl.bash delete job renamer
-#    /builder/kubectl.bash apply -f k8s/renamer.yaml
-#  env:
-#  - CLOUDSDK_COMPUTE_REGION=$_CLUSTER_REGION
-#  - CLOUDSDK_CONTAINER_CLUSTER=data-processing
+- name: gcr.io/cloud-builders/kubectl
+  id: "Deploy renamer configuration"
+  entrypoint: /bin/bash
+  args:
+  - -c
+  - |-
+    sed -i -e 's/{{COMMIT_SHA}}/'${COMMIT_SHA}'/g' \
+           -e 's/{{PROJECT_ID}}/'${PROJECT_ID}'/g' \
+           k8s/renamer.yaml
+
+    # Enable after reannotator has completed.
+    /builder/kubectl.bash delete job renamer
+    /builder/kubectl.bash apply -f k8s/renamer.yaml
+  env:
+  - CLOUDSDK_COMPUTE_REGION=$_CLUSTER_REGION
+  - CLOUDSDK_CONTAINER_CLUSTER=data-processing
