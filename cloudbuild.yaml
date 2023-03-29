@@ -64,15 +64,23 @@ steps:
     sed -i -e 's/{{COMMIT_SHA}}/'${COMMIT_SHA}'/g' \
            -e 's/{{PROJECT_ID}}/'${PROJECT_ID}'/g' \
            k8s/reannotator.yaml
+    sed -i -e 's/{{COMMIT_SHA}}/'${COMMIT_SHA}'/g' \
+           -e 's/{{PROJECT_ID}}/'${PROJECT_ID}'/g' \
+           k8s/renamer.yaml
 
     /builder/kubectl.bash create configmap reannotator-config \
         --from-file=k8s/reannotator-query.sql --dry-run -o yaml | \
         /builder/kubectl.bash apply -f -
 
     # Jobs cannot be applied before removing the old one.
+    #/builder/kubectl.bash delete job init-job-server
+    #/builder/kubectl.bash delete job reannotator
+    #/builder/kubectl.bash apply -f k8s/reannotator.yaml
+
+    # Enable after reannotator has completed.
     /builder/kubectl.bash delete job init-job-server
-    /builder/kubectl.bash delete job reannotator
-    /builder/kubectl.bash apply -f k8s/reannotator.yaml
+    /builder/kubectl.bash delete job renamer
+    /builder/kubectl.bash apply -f k8s/renamer.yaml
   env:
   - CLOUDSDK_COMPUTE_REGION=$_CLUSTER_REGION
   - CLOUDSDK_CONTAINER_CLUSTER=data-processing
