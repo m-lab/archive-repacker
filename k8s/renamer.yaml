@@ -18,7 +18,9 @@ spec:
         image: ghcr.io/groundnuty/k8s-wait-for:v1.6
         imagePullPolicy: Always
         args:
-        - job
+        # Wait for at least one pod in that job to have 'Succeeded' state, does not mind some 'Failed' ones.
+        # The job server will remain the authoritative source for completed dates.
+        - job-wr
         - reannotator
       - name: busybox
         image: busybox
