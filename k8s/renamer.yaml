@@ -14,7 +14,7 @@ spec:
         prometheus.io/scrape: 'true'
     spec:
       initContainers:
-      - name: wait-for-onezone
+      - name: k8s-wait-for
         image: ghcr.io/groundnuty/k8s-wait-for:v1.6
         imagePullPolicy: Always
         args:
