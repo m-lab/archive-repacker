@@ -6,6 +6,17 @@ import (
 	"log"
 
 	"github.com/m-lab/archive-repacker/internal/jobs"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+)
+
+var (
+	renamerArchives = promauto.NewCounter(
+		prometheus.CounterOpts{
+			Name: "renamer_archives_total",
+			Help: "The number of archives renamed.",
+		},
+	)
 )
 
 // Renamer is an interface for types that support renaming.
@@ -37,6 +48,7 @@ func (c *Copier) ProcessDate(ctx context.Context, date string) error {
 			log.Printf("Failed to rename %q: %v", l[i], err)
 			return fmt.Errorf("failed rename of %q: %w", l[i], err)
 		}
+		renamerArchives.Inc()
 	}
 	log.Printf("Renamed %d objects for %s", len(l), date)
 	return nil
