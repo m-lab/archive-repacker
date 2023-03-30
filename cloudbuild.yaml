@@ -70,7 +70,6 @@ steps:
         /builder/kubectl.bash apply -f -
 
     # Jobs cannot be applied before removing the old one.
-    /builder/kubectl.bash delete job init-job-server
     /builder/kubectl.bash delete job reannotator
     /builder/kubectl.bash apply -f k8s/reannotator.yaml
   env:
