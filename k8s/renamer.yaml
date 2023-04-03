@@ -1,0 +1,64 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: init-job-server
+spec:
+  template:
+    metadata:
+      name: init-job-server
+    spec:
+      containers:
+      - name: busybox
+        image: busybox
+        args:
+        - wget
+        # Init a single date for testing.
+        - http://$(JOB_SERVER_PORT_8083_TCP_ADDR):$(JOB_SERVER_PORT_8083_TCP_PORT)/v1/init?start=2023-02-10&end=2023-02-11
+        # TODO(soltesz): initialize complete time range for production deployment.
+        # - http://$(JOB_SERVER_PORT_8083_TCP_ADDR):$(JOB_SERVER_PORT_8083_TCP_PORT)/v1/init?start=2020-03-10&end=2023-02-11
+      restartPolicy: Never
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: renamer
+spec:
+  parallelism: 32
+  backoffLimit: 256
+  template:
+    metadata:
+      name: renamer
+      labels:
+        app: renamer
+      annotations:
+        prometheus.io/scrape: 'true'
+    spec:
+      initContainers:
+      - name: wait-briefly
+        image: busybox
+        command: ["sh", "-c", "sleep 30"]
+      containers:
+      - name: renamer
+        image: gcr.io/{{PROJECT_ID}}/archive-repacker:reannotator-{{COMMIT_SHA}}
+        command:
+        - "/renamer"
+        args:
+        - -jobservice.url=http://$(JOB_SERVER_PORT_8083_TCP_ADDR):$(JOB_SERVER_PORT_8083_TCP_PORT)
+        - -prometheusx.listen-address=:9990
+        - -output=annotation2-output-{{PROJECT_ID}}
+        - -from-datatype=annotation
+        - -new-datatype=annotation2
+        ports:
+        - containerPort: 9990
+
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "200Mi"
+
+      nodeSelector:
+        archiver: "true"
+
+      # Setting policy to "Never" leaves the failed job in k8s so the logs
+      # remain accessible.
+      restartPolicy: Never
