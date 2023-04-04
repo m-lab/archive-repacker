@@ -11,11 +11,9 @@ spec:
       - name: busybox
         image: busybox
         args:
+        # Initialize complete annotation history.
         - wget
-        # Init a single date for testing.
-        - http://$(JOB_SERVER_PORT_8083_TCP_ADDR):$(JOB_SERVER_PORT_8083_TCP_PORT)/v1/init?start=2023-02-10&end=2023-02-11
-        # TODO(soltesz): initialize complete time range for production deployment.
-        # - http://$(JOB_SERVER_PORT_8083_TCP_ADDR):$(JOB_SERVER_PORT_8083_TCP_PORT)/v1/init?start=2020-03-10&end=2023-02-11
+        - http://$(JOB_SERVER_PORT_8083_TCP_ADDR):$(JOB_SERVER_PORT_8083_TCP_PORT)/v1/init?start=2020-03-10&end=2023-02-11
       restartPolicy: Never
 ---
 apiVersion: batch/v1
