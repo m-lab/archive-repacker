@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"cloud.google.com/go/storage"
+
 	"github.com/fsouza/fake-gcs-server/fakestorage"
 
 	"github.com/m-lab/archive-repacker/archive"
@@ -160,6 +162,18 @@ func TestRenamer_Rename(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Src attrs.
+			var srcattr *storage.ObjectAttrs
+			var s *archive.Path
+			var err error
+			if !tt.wantErr {
+				s, err = archive.ParseArchiveURL(tt.url)
+				testingx.Must(t, err, "failed to parse archive url: %s", tt.url)
+				src := client.Bucket(s.Bucket()).Object(s.Object())
+				srcattr, err = src.Attrs(context.Background())
+				testingx.Must(t, err, "failed to read attrs")
+			}
+
 			r := NewRenamer(client, tt.bucket, "ndt", tt.fromDatatype, tt.newDatatype)
 			got, err := r.Rename(context.Background(), tt.url)
 			if (err != nil) != tt.wantErr {
@@ -174,20 +188,20 @@ func TestRenamer_Rename(t *testing.T) {
 			}
 
 			// Verify output objects are in GCS.
-			s, err := archive.ParseArchiveURL(tt.url)
-			testingx.Must(t, err, "failed to parse archive url: %s", tt.url)
 			d, err := archive.ParseArchiveURL(got)
 			testingx.Must(t, err, "failed to parse output url: %s", got)
-			// Src attrs.
-			src := client.Bucket(s.Bucket()).Object(s.Object())
-			srcattr, err := src.Attrs(context.Background())
-			testingx.Must(t, err, "failed to read attrs")
 			// Dst attrs.
 			dst := client.Bucket(d.Bucket()).Object(d.Object())
 			dstattr, err := dst.Attrs(context.Background())
 			testingx.Must(t, err, "failed to read attrs")
 			if srcattr.Size != dstattr.Size {
 				t.Errorf("Renamer.Rename() wrong object size; got %d, want %d", dstattr.Size, srcattr.Size)
+			}
+			// Verify source object is NOT in GCS.
+			src := client.Bucket(s.Bucket()).Object(s.Object())
+			_, err = src.Attrs(context.Background())
+			if tt.url != tt.want && err == nil {
+				t.Errorf("Renamer.Rename() failed to remove source object: %q", s)
 			}
 		})
 	}

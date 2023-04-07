@@ -103,12 +103,20 @@ func (r *Renamer) Rename(ctx context.Context, url string) (string, error) {
 	// Unconditionally overwrite the dst object.
 	// Note: Copiers go through the client: read from GCS then write to GCS.
 	for trial := 0; trial < 2; trial++ {
-		_, err := dstObj.CopierFrom(srcObj).Run(ctx)
+		_, err = dstObj.CopierFrom(srcObj).Run(ctx)
 		if err != nil {
 			log.Printf("Failed to copy %q, err: %v", dst, err)
 			continue
 		}
 		break
+	}
+	if err != nil {
+		// Copy failed, so do not delete source.
+		return "", err
+	}
+	// Delete src object after successful copy.
+	if err := srcObj.Delete(ctx); err != nil {
+		return "", fmt.Errorf("failed to delete object(%q): %w", src, err)
 	}
 	return dst.String(), err
 }
