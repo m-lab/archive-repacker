@@ -17,8 +17,19 @@ import (
 	"github.com/m-lab/go/rtx"
 	"github.com/m-lab/uuid-annotator/annotator"
 	"github.com/m-lab/uuid-annotator/asnannotator"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 
 	"cloud.google.com/go/storage"
+)
+
+var (
+	repackerHopFileUnparsable = promauto.NewCounter(
+		prometheus.CounterOpts{
+			Name: "repacker_hop_file_unparsable_total",
+			Help: "The number of hop annotation files that could not be parsed",
+		},
+	)
 )
 
 // Processor maintains state for reprocessing annotation archives.
@@ -89,7 +100,8 @@ func (p *HopProcessor) File(h *tar.Header, b []byte) ([]byte, error) {
 	fields := strings.Split(strings.ReplaceAll(h.Name, ".json", ""), "_")
 	if len(fields) != 3 {
 		// We cannot parse this filename to identify the IP.
-		log.Println("Unparsable filename: skipping:", h.Name)
+		log.Println("Skipping unparsable filename:", h.Name)
+		repackerHopFileUnparsable.Inc()
 		return b, nil
 	}
 
