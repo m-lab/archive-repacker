@@ -45,6 +45,7 @@ spec:
         - -routeview-v6.url=gs://downloader-{{PROJECT_ID}}/RouteViewIPv6/
         - -asname.url=file:/data/asnames.ipinfo.csv
         - -query=/config/reannotator-query-hopannotation1.sql
+        - -datatype=hopannotation1
         - -output=annotation2-output-{{PROJECT_ID}}
         - -prometheusx.listen-address=:9990
         ports:
