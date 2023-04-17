@@ -1,6 +1,6 @@
 SELECT
   parser.ArchiveURL as ArchiveURL,
-  STRUCT("" as Filename, "" as DstIP) as Files
+  [STRUCT("" as Filename, "" as DstIP)] as Files
 FROM
   `measurement-lab.ndt_raw.hopannotation1`
 WHERE
