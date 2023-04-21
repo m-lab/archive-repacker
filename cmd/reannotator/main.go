@@ -31,9 +31,13 @@ var (
 	routeviewv6 = flagx.URL{}
 	asnameurl   = flagx.URL{}
 	jobservice  = flagx.URL{}
-	bqDelay     = time.Millisecond
-	project     string
-	outBucket   string
+	datatype    = flagx.Enum{
+		Value:   "", // No default.
+		Options: []string{"annotation", "hopannotation1"},
+	}
+	bqDelay   = time.Millisecond
+	project   string
+	outBucket string
 
 	mainCtx, mainCancel = context.WithCancel(context.Background())
 
@@ -70,6 +74,7 @@ func init() {
 	flag.Var(&routeviewv6, "routeview-v6.url", "The URL for the RouteViewIPv6 file containing prefix2as data. gs:// and file:// schemes accepted.")
 	flag.Var(&asnameurl, "asname.url", "The URL for the ASName CSV file containing a mapping of AS numbers to AS names provided by IPInfo.io.")
 	flag.Var(&jobservice, "jobservice.url", "The URL for the job service providing dates to process.")
+	flag.Var(&datatype, "datatype", "The kind of data to reannotate.")
 	flag.StringVar(&project, "project", "", "GCP project name.")
 	flag.StringVar(&outBucket, "output", "annotation2-output-mlab-sandbox", "Write generated archives to this GCS Bucket.")
 	flag.DurationVar(&bqDelay, "bq-delay", time.Millisecond, "Pause collection of each BigQuery row.")
@@ -89,13 +94,25 @@ func main() {
 	jc := jobs.NewClient(jobservice.URL, http.DefaultClient)
 	sclient, err := storage.NewClient(mainCtx, option.WithScopes(storage.ScopeReadWrite))
 	rtx.Must(err, "failed to create new read/write storage client")
-	p := annotation.NewProcessor(
-		sclient,
-		outBucket,
-		routeviewv4.URL,
-		routeviewv6.URL,
-		asnameurl.URL)
-
+	var p process.Processor[annotation.Result]
+	switch datatype.Value {
+	case "annotation":
+		p = annotation.NewProcessor(
+			sclient,
+			outBucket,
+			routeviewv4.URL,
+			routeviewv6.URL,
+			asnameurl.URL)
+	case "hopannotation1":
+		p = annotation.NewHopProcessor(
+			sclient,
+			outBucket,
+			routeviewv4.URL,
+			routeviewv6.URL,
+			asnameurl.URL)
+	default:
+		log.Fatalf("Unsupported datatype: %q", datatype.Value)
+	}
 	// Many clients running a query can generate quota exceeded errors.
 	// e.g. googleapi: Error 403: Quota exceeded: Your project exceeded
 	//      quota for tabledata.list bytes per second per project.
