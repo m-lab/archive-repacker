@@ -88,7 +88,7 @@ func (p *HopProcessor) Source(ctx context.Context, row Result) *archive.Source {
 // file content or process.ErrCorrupt.
 func (p *HopProcessor) File(h *tar.Header, b []byte) ([]byte, error) {
 	// Parse annotation.
-	an := annotator.Annotations{}
+	an := annotator.ClientAnnotations{}
 	err := json.Unmarshal(b, &an)
 	if err != nil {
 		log.Println("Error Unmarshal file:", h.Name, err)
@@ -105,14 +105,14 @@ func (p *HopProcessor) File(h *tar.Header, b []byte) ([]byte, error) {
 		return b, nil
 	}
 
-	before := an.Client.Network
+	before := an.Network
 	// Recreate Network annotation using client IP.
-	an.Client.Network = p.asn.AnnotateIP(fields[2])
+	an.Network = p.asn.AnnotateIP(fields[2])
 
 	// Track how frequently the annotation was previously missing or updated.
 	if before == nil || before.Missing {
 		repackerAnnotations.WithLabelValues("was-missed").Inc()
-	} else if before.ASNumber != an.Client.Network.ASNumber {
+	} else if before.ASNumber != an.Network.ASNumber {
 		repackerAnnotations.WithLabelValues("asn-update").Inc()
 	} else {
 		repackerAnnotations.WithLabelValues("equal").Inc()
