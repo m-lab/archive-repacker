@@ -180,18 +180,12 @@ func TestHopProcessor_File(t *testing.T) {
 func TestHopProcessor_Finish(t *testing.T) {
 	tests := []struct {
 		name      string
-		files     map[string]string
-		src       *archive.Source
 		outBucket string
 		fromURL   string
 		wantURL   string
-		wantErr   bool
 	}{
 		{
-			name: "success",
-			files: map[string]string{
-				"foo": "bar",
-			},
+			name:      "success",
 			outBucket: "fake-target-bucket",
 			fromURL:   "gs://fake-source-bucket/ndt/annotation/2023/03/01/20230302T031500.576788Z-annotation-mlab1-chs0t-ndt.tgz",
 			wantURL:   "gs://fake-target-bucket/ndt/annotation/2023/03/01/20230302T031500.576788Z-annotation-mlab1-chs0t-ndt.tgz",
@@ -236,8 +230,9 @@ func TestHopProcessor_Finish(t *testing.T) {
 			}
 			out := createTargetFromSource(src)
 			err = p.Finish(ctx, out)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("HopProcessor.Finish() error = %v, wantErr %v", err, tt.wantErr)
+			if err != nil {
+				t.Errorf("HopProcessor.Finish() error = %v, want nil", err)
+				return
 			}
 			// Verify new file is in the fake-target-bucket.
 			src2, err := archive.NewGCSSource(ctx, client, tt.wantURL)
