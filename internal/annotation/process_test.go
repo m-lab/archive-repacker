@@ -143,9 +143,7 @@ func TestProcessor_File(t *testing.T) {
 		name    string
 		fromURL string
 		files   map[string]string
-		src     *archive.Source
 		netAnn  *annotator.Network
-		want    []byte
 		wantErr bool
 	}{
 		{
@@ -207,7 +205,7 @@ func TestProcessor_File(t *testing.T) {
 			testingx.Must(t, err, "failed to unmarshal processor result")
 			// Verify that output is well formatted.
 			if !reflect.DeepEqual(an.Client.Network, tt.netAnn) {
-				t.Errorf("Processor.File() = %v, want %v", an, tt.want)
+				t.Errorf("Processor.File() = %v, want %v", an.Client.Network, tt.netAnn)
 			}
 		})
 	}
@@ -229,11 +227,9 @@ func TestProcessor_Finish(t *testing.T) {
 	tests := []struct {
 		name      string
 		files     map[string]string
-		src       *archive.Source
 		outBucket string
 		fromURL   string
 		wantURL   string
-		wantErr   bool
 	}{
 		{
 			name: "success",
@@ -285,8 +281,9 @@ func TestProcessor_Finish(t *testing.T) {
 			}
 			out := createTargetFromSource(src)
 			err = p.Finish(ctx, out)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Processor.Finish() error = %v, wantErr %v", err, tt.wantErr)
+			if err != nil {
+				t.Errorf("Processor.Finish() error = %v, want nil", err)
+				return
 			}
 			// Verify new file is in the fake-target-bucket.
 			src2, err := archive.NewGCSSource(ctx, client, tt.wantURL)
