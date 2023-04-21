@@ -15,7 +15,7 @@ import (
 	"github.com/m-lab/archive-repacker/routeview"
 	"github.com/m-lab/go/content"
 	"github.com/m-lab/go/rtx"
-	"github.com/m-lab/uuid-annotator/annotator"
+	"github.com/m-lab/traceroute-caller/hopannotation"
 	"github.com/m-lab/uuid-annotator/asnannotator"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -88,7 +88,7 @@ func (p *HopProcessor) Source(ctx context.Context, row Result) *archive.Source {
 // file content or process.ErrCorrupt.
 func (p *HopProcessor) File(h *tar.Header, b []byte) ([]byte, error) {
 	// Parse annotation.
-	an := annotator.ClientAnnotations{}
+	an := hopannotation.HopAnnotation1{}
 	err := json.Unmarshal(b, &an)
 	if err != nil {
 		log.Println("Error Unmarshal file:", h.Name, err)
@@ -105,14 +105,14 @@ func (p *HopProcessor) File(h *tar.Header, b []byte) ([]byte, error) {
 		return b, nil
 	}
 
-	before := an.Network
+	before := an.Annotations.Network
 	// Recreate Network annotation using client IP.
-	an.Network = p.asn.AnnotateIP(fields[2])
+	an.Annotations.Network = p.asn.AnnotateIP(fields[2])
 
 	// Track how frequently the annotation was previously missing or updated.
 	if before == nil || before.Missing {
 		repackerAnnotations.WithLabelValues("was-missed").Inc()
-	} else if before.ASNumber != an.Network.ASNumber {
+	} else if before.ASNumber != an.Annotations.Network.ASNumber {
 		repackerAnnotations.WithLabelValues("asn-update").Inc()
 	} else {
 		repackerAnnotations.WithLabelValues("equal").Inc()
