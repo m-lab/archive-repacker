@@ -13,9 +13,7 @@ spec:
         args:
         # Full history of annotation archives.
         - wget
-        - http://$(JOB_SERVER_PORT_8083_TCP_ADDR):$(JOB_SERVER_PORT_8083_TCP_PORT)/v1/init?start=2019-04-01&end=2023-04-04
-        # TODO(soltesz): operate on fully history of hopannotation1 archives.
-        # - http://$(JOB_SERVER_PORT_8083_TCP_ADDR):$(JOB_SERVER_PORT_8083_TCP_PORT)/v1/init?start=2019-06-04&end=2023-04-04
+        - http://$(JOB_SERVER_PORT_8083_TCP_ADDR):$(JOB_SERVER_PORT_8083_TCP_PORT)/v1/init?start=2019-06-04&end=2023-04-04
       restartPolicy: Never
 ---
 apiVersion: batch/v1
@@ -46,8 +44,8 @@ spec:
         - -jobservice.url=http://$(JOB_SERVER_PORT_8083_TCP_ADDR):$(JOB_SERVER_PORT_8083_TCP_PORT)
         - -prometheusx.listen-address=:9990
         - -output=annotation2-output-{{PROJECT_ID}}
-        - -from-datatype=annotation
-        - -new-datatype=annotation2
+        - -from-datatype=hopannotation1
+        - -new-datatype=hopannotation2
         ports:
         - containerPort: 9990
 
