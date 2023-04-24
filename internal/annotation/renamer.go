@@ -114,9 +114,14 @@ func (r *Renamer) Rename(ctx context.Context, url string) (string, error) {
 		// Copy failed, so do not delete source.
 		return "", err
 	}
-	// Delete src object after successful copy.
-	if err := srcObj.Delete(ctx); err != nil {
-		return "", fmt.Errorf("failed to delete object(%q): %w", src, err)
+	for trial := 0; trial < 2; trial++ {
+		// Delete src object after successful copy.
+		err = srcObj.Delete(ctx)
+		if err != nil {
+			log.Printf("Failed to delete object(%q): %v", src, err)
+			continue
+		}
+		break
 	}
 	return dst.String(), err
 }
